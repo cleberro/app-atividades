@@ -12,13 +12,14 @@ import ItemDetailModal from '../components/ItemDetailModal';
 import { STATUS_ITEM_OPCOES } from '../api/types';
 import type { Item } from '../api/types';
 import { ordenarItens, type CriterioOrdenacao } from '../utils/ordenacao';
+import { useEstadoPersistente } from '../hooks/useEstadoPersistente';
 
 export default function TemaDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [mostrarForm, setMostrarForm] = useState(false);
-  const [filtros, setFiltros] = useState<FiltrosItensValor>(FILTROS_VAZIOS);
+  const [filtros, setFiltros] = useEstadoPersistente<FiltrosItensValor>('filtros-tema-detail', FILTROS_VAZIOS);
   const [ordenacao, setOrdenacao] = useState<CriterioOrdenacao>('padrao');
   const [itemSelecionado, setItemSelecionado] = useState<Item | null>(null);
 
