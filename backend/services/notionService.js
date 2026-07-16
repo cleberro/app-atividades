@@ -25,8 +25,29 @@ const { Client } = require('@notionhq/client');
 
 const TEMAS_DB_ID = '92651600-a190-459f-b054-b0fb3a0736fb';
 const ITENS_DB_ID = '8628bb86-8a72-4607-80a6-1da5d1938843';
+const HABITOS_DB_ID = '39fa1a73-667d-81a2-900e-c00d817ff521';
+const REGISTROS_HABITOS_DB_ID = '39fa1a73-667d-810f-a8ff-fbb79ca41ee6';
 
 const notion = new Client({ auth: process.env.NOTION_API_KEY });
+
+// Nomes usados como opções do multi-select "Dias da Semana" da database
+// Hábitos, na mesma ordem do índice retornado por Date.getUTCDay() (0 =
+// Domingo). Ver diaDaSemanaDe() logo abaixo.
+const DIAS_SEMANA = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
+
+/**
+ * Dado um "YYYY-MM-DD", retorna o nome do dia da semana correspondente
+ * (em português, igual às opções do multi-select no Notion). Usa
+ * Date.UTC() de propósito: construir a data a partir dos componentes
+ * Y/M/D em UTC evita o bug clássico de fuso horário onde
+ * `new Date('2026-07-16').getDay()` pode "voltar" um dia dependendo do
+ * fuso do processo Node (ex.: em produção o servidor roda em UTC, mas
+ * localmente pode rodar em outro fuso).
+ */
+function diaDaSemanaDe(dataStr) {
+  const [ano, mes, dia] = dataStr.split('-').map(Number);
+  return DIAS_SEMANA[new Date(Date.UTC(ano, mes - 1, dia)).getUTCDay()];
+}
 
 // ---------------------------------------------------------------------
 // Helpers de leitura de propriedades Notion -> valores JS simples
@@ -44,6 +65,11 @@ function getRichText(prop) {
 
 function getSelect(prop) {
   return prop && prop.select ? prop.select.name : null;
+}
+
+function getMultiSelect(prop) {
+  if (!prop || !Array.isArray(prop.multi_select)) return [];
+  return prop.multi_select.map((o) => o.name);
 }
 
 function getCheckbox(prop) {
@@ -121,6 +147,27 @@ function mapItem(page) {
     urlAta: getUrl(p['URL da Ata']),
     origem: getSelect(p.Origem),
     criadoEm: getCreatedTime(p['Criado em']),
+  };
+}
+
+function mapHabito(page) {
+  const p = page.properties;
+  return {
+    id: page.id,
+    titulo: getTitle(p['Título do Hábito']),
+    descricao: getRichText(p['Descrição']),
+    diasSemana: getMultiSelect(p['Dias da Semana']),
+    horario: getRichText(p['Horário']) || null,
+    ativo: getCheckbox(p['Ativo']),
+  };
+}
+
+function mapRegistro(page) {
+  const p = page.properties;
+  return {
+    id: page.id,
+    habitoId: getRelationIds(p['Hábito'])[0] || null,
+    data: getDate(p['Data']),
   };
 }
 
@@ -427,9 +474,177 @@ async function getDashboardSemana() {
   return { temasEmFoco, itensHoje };
 }
 
+// ---------------------------------------------------------------------
+// Hábitos
+// ---------------------------------------------------------------------
+
+/**
+ * Lista hábitos. filtros.ativo (boolean) restringe a apenas ativos/pausados;
+ * sem filtro, retorna todos (usado na tela de gerenciamento de hábitos).
+ */
+async function listHabitos(filtros = {}) {
+  const query = { database_id: HABITOS_DB_ID, page_size: 100 };
+  if (typeof filtros.ativo === 'boolean') {
+    query.filter = { property: 'Ativo', checkbox: { equals: filtros.ativo } };
+  }
+
+  const results = [];
+  let cursor;
+  do {
+    const response = await notion.databases.query({ ...query, start_cursor: cursor });
+    results.push(...response.results);
+    cursor = response.has_more ? response.next_cursor : undefined;
+  } while (cursor);
+
+  return results.map(mapHabito);
+}
+
+/**
+ * Cria um novo hábito. "Ativo" default true se não informado.
+ */
+async function createHabito(dados) {
+  const properties = {
+    'Título do Hábito': { title: [{ text: { content: dados.titulo || 'Sem título' } }] },
+    Ativo: { checkbox: dados.ativo === undefined ? true : !!dados.ativo },
+  };
+  if (dados.descricao) {
+    properties['Descrição'] = { rich_text: buildRichText(dados.descricao) };
+  }
+  if (Array.isArray(dados.diasSemana)) {
+    properties['Dias da Semana'] = { multi_select: dados.diasSemana.map((nome) => ({ name: nome })) };
+  }
+  if (dados.horario) {
+    properties['Horário'] = { rich_text: buildRichText(dados.horario) };
+  }
+
+  const page = await notion.pages.create({ parent: { database_id: HABITOS_DB_ID }, properties });
+  return mapHabito(page);
+}
+
+/**
+ * Atualiza campos de um hábito existente.
+ */
+async function updateHabito(habitoId, dados) {
+  const properties = {};
+
+  if (dados.titulo !== undefined) {
+    properties['Título do Hábito'] = { title: [{ text: { content: dados.titulo } }] };
+  }
+  if (dados.descricao !== undefined) {
+    properties['Descrição'] = { rich_text: buildRichText(dados.descricao) };
+  }
+  if (dados.diasSemana !== undefined) {
+    properties['Dias da Semana'] = {
+      multi_select: (dados.diasSemana || []).map((nome) => ({ name: nome })),
+    };
+  }
+  if (dados.horario !== undefined) {
+    properties['Horário'] = { rich_text: buildRichText(dados.horario || '') };
+  }
+  if (dados.ativo !== undefined) {
+    properties['Ativo'] = { checkbox: !!dados.ativo };
+  }
+
+  const page = await notion.pages.update({ page_id: habitoId, properties });
+  return mapHabito(page);
+}
+
+/**
+ * Exclui (arquiva no Notion) um hábito. Os registros de check-in
+ * associados permanecem no histórico (não são apagados junto).
+ */
+async function deleteHabito(habitoId) {
+  await notion.pages.update({ page_id: habitoId, archived: true });
+}
+
+/** Busca registros de check-in de um hábito numa data específica. */
+async function findRegistros(habitoId, data) {
+  const response = await notion.databases.query({
+    database_id: REGISTROS_HABITOS_DB_ID,
+    filter: {
+      and: [
+        { property: 'Hábito', relation: { contains: habitoId } },
+        { property: 'Data', date: { equals: data } },
+      ],
+    },
+    page_size: 5,
+  });
+  return response.results;
+}
+
+/**
+ * Marca (ou desmarca) o check-in de um hábito numa data ("YYYY-MM-DD").
+ * Marcar cria uma página em Registro de Hábitos; desmarcar arquiva a(s)
+ * página(s) existente(s) para aquele hábito+data — idempotente nos dois
+ * sentidos.
+ */
+async function setCheckin(habitoId, data, concluido) {
+  const existentes = await findRegistros(habitoId, data);
+
+  if (concluido) {
+    if (existentes.length === 0) {
+      const habitoPage = await notion.pages.retrieve({ page_id: habitoId });
+      const tituloHabito = getTitle(habitoPage.properties['Título do Hábito']);
+      await notion.pages.create({
+        parent: { database_id: REGISTROS_HABITOS_DB_ID },
+        properties: {
+          Nome: { title: [{ text: { content: `${tituloHabito} — ${data}` } }] },
+          'Hábito': { relation: [{ id: habitoId }] },
+          Data: { date: { start: data } },
+        },
+      });
+    }
+    return { concluido: true };
+  }
+
+  await Promise.all(
+    existentes.map((page) => notion.pages.update({ page_id: page.id, archived: true }))
+  );
+  return { concluido: false };
+}
+
+/**
+ * Hábitos ativos previstos para o dia da semana de "data" ("YYYY-MM-DD"),
+ * cada um com a flag concluidoHoje indicando se já há check-in nessa data.
+ * Ordenados por horário.
+ */
+async function getHabitosHoje(data) {
+  const diaSemana = diaDaSemanaDe(data);
+  const habitosAtivos = await listHabitos({ ativo: true });
+  const habitosDoDia = habitosAtivos.filter((h) => h.diasSemana.includes(diaSemana));
+  if (habitosDoDia.length === 0) return [];
+
+  const response = await notion.databases.query({
+    database_id: REGISTROS_HABITOS_DB_ID,
+    filter: { property: 'Data', date: { equals: data } },
+    page_size: 100,
+  });
+  const concluidosHoje = new Set(response.results.map(mapRegistro).map((r) => r.habitoId));
+
+  return habitosDoDia
+    .map((h) => ({ ...h, concluidoHoje: concluidosHoje.has(h.id) }))
+    .sort((a, b) => (a.horario || '').localeCompare(b.horario || ''));
+}
+
+/**
+ * Datas ("YYYY-MM-DD") em que um hábito foi concluído, das mais recentes
+ * para as mais antigas, limitado a "dias" registros.
+ */
+async function getHistoricoHabito(habitoId, dias = 30) {
+  const response = await notion.databases.query({
+    database_id: REGISTROS_HABITOS_DB_ID,
+    filter: { property: 'Hábito', relation: { contains: habitoId } },
+    sorts: [{ property: 'Data', direction: 'descending' }],
+    page_size: Math.min(Math.max(Number(dias) || 30, 1), 100),
+  });
+  return response.results.map(mapRegistro).map((r) => r.data).filter(Boolean);
+}
+
 module.exports = {
   TEMAS_DB_ID,
   ITENS_DB_ID,
+  HABITOS_DB_ID,
+  REGISTROS_HABITOS_DB_ID,
   listTemas,
   createTema,
   setFocoSemana,
@@ -441,4 +656,11 @@ module.exports = {
   deleteItem,
   getKanban,
   getDashboardSemana,
+  listHabitos,
+  createHabito,
+  updateHabito,
+  deleteHabito,
+  setCheckin,
+  getHabitosHoje,
+  getHistoricoHabito,
 };

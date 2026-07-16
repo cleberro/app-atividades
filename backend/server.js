@@ -7,6 +7,7 @@ const rateLimit = require('express-rate-limit');
 const temasRouter = require('./routes/temas');
 const itensRouter = require('./routes/itens');
 const dashboardRouter = require('./routes/dashboard');
+const habitosRouter = require('./routes/habitos');
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -40,6 +41,7 @@ app.get('/api/health', (req, res) => {
 app.use('/api/temas', temasRouter);
 app.use('/api/itens', itensRouter);
 app.use('/api/dashboard', dashboardRouter);
+app.use('/api/habitos', habitosRouter);
 
 // Handler de erro central: traduz erros da API do Notion (ex.: 401 sem
 // token valido) em respostas JSON legiveis para o frontend.

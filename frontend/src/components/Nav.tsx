@@ -5,6 +5,7 @@ const links = [
   { to: '/tabela', label: 'Tabela', icon: '▦' },
   { to: '/kanban', label: 'Kanban', icon: '🗂️' },
   { to: '/temas', label: 'Temas', icon: '🗂' },
+  { to: '/habitos', label: 'Hábitos', icon: '✓' },
   { to: '/novo', label: 'Novo Item', icon: '+' },
 ];
 

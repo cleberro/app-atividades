@@ -6,6 +6,7 @@ import Kanban from './pages/Kanban';
 import Temas from './pages/Temas';
 import TemaDetail from './pages/TemaDetail';
 import Novo from './pages/Novo';
+import Habitos from './pages/Habitos';
 
 export default function App() {
   return (
@@ -18,6 +19,7 @@ export default function App() {
           <Route path="/kanban" element={<Kanban />} />
           <Route path="/temas" element={<Temas />} />
           <Route path="/temas/:id" element={<TemaDetail />} />
+          <Route path="/habitos" element={<Habitos />} />
           <Route path="/novo" element={<Novo />} />
         </Routes>
       </main>

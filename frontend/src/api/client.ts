@@ -6,6 +6,10 @@ import type {
   NovoTemaPayload,
   KanbanColunas,
   DashboardSemana,
+  Habito,
+  HabitoHoje,
+  NovoHabitoPayload,
+  AtualizarHabitoPayload,
 } from './types';
 
 // Em dev local, aponta para o backend na porta 4000 por padrão. Em produção
@@ -89,6 +93,23 @@ export const api = {
 
   // Dashboard
   dashboardSemana: () => request<DashboardSemana>('/api/dashboard/semana'),
+
+  // Hábitos
+  listarHabitos: (ativo?: boolean) =>
+    request<Habito[]>(`/api/habitos${buildQuery({ ativo: ativo === undefined ? undefined : String(ativo) })}`),
+  habitosHoje: (data: string) => request<HabitoHoje[]>(`/api/habitos/hoje${buildQuery({ data })}`),
+  criarHabito: (dados: NovoHabitoPayload) =>
+    request<Habito>('/api/habitos', { method: 'POST', body: JSON.stringify(dados) }),
+  atualizarHabito: (id: string, dados: AtualizarHabitoPayload) =>
+    request<Habito>(`/api/habitos/${id}`, { method: 'PATCH', body: JSON.stringify(dados) }),
+  excluirHabito: (id: string) => request<void>(`/api/habitos/${id}`, { method: 'DELETE' }),
+  alternarCheckinHabito: (id: string, data: string, concluido: boolean) =>
+    request<{ concluido: boolean }>(`/api/habitos/${id}/checkin`, {
+      method: 'PATCH',
+      body: JSON.stringify({ data, concluido }),
+    }),
+  historicoHabito: (id: string, dias = 30) =>
+    request<{ datasConcluidas: string[] }>(`/api/habitos/${id}/historico${buildQuery({ dias: String(dias) })}`),
 };
 
 export { ApiError };

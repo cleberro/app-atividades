@@ -130,6 +130,13 @@ completamente — isso é uma limitação do navegador, não do código.
 | PATCH  | `/api/itens/:id/priorizar-hoje`    | Alterna "Priorizado Hoje"                                 |
 | GET    | `/api/itens/kanban`                | Itens agrupados por Status                                |
 | GET    | `/api/dashboard/semana`            | Temas em foco + itens priorizados para hoje               |
+| GET    | `/api/habitos`                     | Lista hábitos (filtro opcional `ativo=true\|false`)        |
+| POST   | `/api/habitos`                     | Cria um novo hábito                                        |
+| PATCH  | `/api/habitos/:id`                 | Atualiza título/descrição/dias da semana/horário/ativo    |
+| DELETE | `/api/habitos/:id`                 | Exclui (arquiva no Notion) um hábito                       |
+| GET    | `/api/habitos/hoje?data=YYYY-MM-DD`| Hábitos ativos previstos para o dia da semana da data informada, com `concluidoHoje` |
+| PATCH  | `/api/habitos/:id/checkin`         | Marca/desmarca conclusão numa data (`{ data, concluido }`) |
+| GET    | `/api/habitos/:id/historico?dias=` | Datas concluídas mais recentes de um hábito                |
 | GET    | `/api/health`                      | Healthcheck (mostra se `NOTION_API_KEY` está configurado) |
 
 Todas as rotas GET usam um cache em memória de 60s (arquivo `backend/cache.js`), invalidado
@@ -147,7 +154,11 @@ Lixeira do workspace, de onde pode ser restaurada) — não existe exclusão per
 | `/kanban`     | **Kanban** — colunas por Status, arrastar e soltar (dnd-kit) atualiza o Status |
 | `/temas`      | **Temas** — um card por tema, contadores e toggle "Focar esta semana" |
 | `/temas/:id`  | **Detalhe do tema** — itens do tema + formulário de novo item          |
+| `/habitos`    | **Hábitos** — cadastro/edição/exclusão de hábitos, histórico de check-ins |
 | `/novo`       | **Novo item** — formulário completo de criação                         |
+
+A tela **Hoje** também mostra os hábitos previstos para o dia (calculado a partir de "Dias da
+Semana" + a data local do navegador) com checkbox para marcar/desmarcar conclusão.
 
 ## 8. Notas e decisões de implementação
 
@@ -159,4 +170,9 @@ Lixeira do workspace, de onde pode ser restaurada) — não existe exclusão per
 - Não há autenticação/usuário no app (single-tenant): qualquer pessoa com acesso à URL do
   frontend/backend consegue ler e escrever nas databases do Notion através do proxy. Avalie
   a exposição da URL publicada de acordo com a sensibilidade dos dados.
+- A funcionalidade de Hábitos usa duas databases próprias no Notion, criadas como filhas da
+  mesma página-mãe das databases de Temas/Itens: **"Hábitos"** (Título do Hábito, Descrição,
+  Dias da Semana, Horário, Ativo) e **"Registro de Hábitos"** (relação com o hábito + Data —
+  cada página representa um check-in de um dia específico; desmarcar um dia arquiva a
+  página correspondente em vez de zerar um campo).
 - Não há testes automatizados nem ESLint/Prettier configurados em nenhum dos dois projetos.

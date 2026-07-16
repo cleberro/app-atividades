@@ -6,15 +6,28 @@ import { Carregando, Erro, Vazio } from '../components/Estado';
 import { PrioridadePill, StatusPill } from '../components/Pills';
 import ItemDetailModal from '../components/ItemDetailModal';
 import type { Item } from '../api/types';
+import { hojeLocalISO } from '../utils/data';
 
 export default function Hoje() {
   const queryClient = useQueryClient();
   const [novoTitulo, setNovoTitulo] = useState('');
   const [itemSelecionado, setItemSelecionado] = useState<Item | null>(null);
+  const dataHoje = hojeLocalISO();
 
   const { data, isLoading, isError, error } = useQuery({
     queryKey: ['dashboard-semana'],
     queryFn: api.dashboardSemana,
+  });
+
+  const habitosHojeQuery = useQuery({
+    queryKey: ['habitos-hoje', dataHoje],
+    queryFn: () => api.habitosHoje(dataHoje),
+  });
+
+  const toggleCheckinHabito = useMutation({
+    mutationFn: ({ id, valor }: { id: string; valor: boolean }) =>
+      api.alternarCheckinHabito(id, dataHoje, valor),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['habitos-hoje', dataHoje] }),
   });
 
   const criarMutation = useMutation({
@@ -146,6 +159,56 @@ export default function Hoje() {
                   <PrioridadePill prioridade={item.prioridade} />
                   <StatusPill status={item.status} />
                 </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      <section>
+        <div className="mb-3 flex items-center justify-between">
+          <h2 className="text-lg font-semibold">Hábitos de hoje</h2>
+          <Link to="/habitos" className="text-sm text-accent-secondary hover:underline">
+            gerenciar hábitos →
+          </Link>
+        </div>
+        {habitosHojeQuery.isLoading ? (
+          <Carregando texto="Carregando hábitos..." />
+        ) : habitosHojeQuery.isError ? (
+          <Erro mensagem={(habitosHojeQuery.error as Error).message} />
+        ) : (habitosHojeQuery.data ?? []).length === 0 ? (
+          <Vazio texto="Nenhum hábito previsto para hoje. Cadastre hábitos em 'gerenciar hábitos'." />
+        ) : (
+          <ul className="flex flex-col gap-2">
+            {(habitosHojeQuery.data ?? []).map((habito) => (
+              <li key={habito.id} className="card flex items-center justify-between gap-3 p-3">
+                <label className="flex min-w-0 flex-1 cursor-pointer items-center gap-3">
+                  <input
+                    type="checkbox"
+                    checked={habito.concluidoHoje}
+                    onChange={(e) =>
+                      toggleCheckinHabito.mutate({ id: habito.id, valor: e.target.checked })
+                    }
+                    className="h-4 w-4 accent-accent-primary"
+                  />
+                  <div className="min-w-0">
+                    <p
+                      className={`truncate text-sm font-medium ${
+                        habito.concluidoHoje ? 'text-text-muted line-through' : ''
+                      }`}
+                    >
+                      {habito.titulo}
+                    </p>
+                    {habito.descricao && (
+                      <p className="truncate text-xs text-text-muted">{habito.descricao}</p>
+                    )}
+                  </div>
+                </label>
+                {habito.horario && (
+                  <span className="pill shrink-0 bg-accent-secondary/20 text-accent-secondary">
+                    {habito.horario}
+                  </span>
+                )}
               </li>
             ))}
           </ul>

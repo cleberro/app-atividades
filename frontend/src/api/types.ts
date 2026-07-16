@@ -71,6 +71,48 @@ export interface DashboardSemana {
   itensHoje: Item[];
 }
 
+export type DiaSemana =
+  | 'Segunda'
+  | 'Terça'
+  | 'Quarta'
+  | 'Quinta'
+  | 'Sexta'
+  | 'Sábado'
+  | 'Domingo';
+
+export interface Habito {
+  id: string;
+  titulo: string;
+  descricao: string;
+  diasSemana: DiaSemana[];
+  horario: string | null;
+  ativo: boolean;
+}
+
+export interface HabitoHoje extends Habito {
+  concluidoHoje: boolean;
+}
+
+export interface NovoHabitoPayload {
+  titulo: string;
+  descricao?: string;
+  diasSemana?: DiaSemana[];
+  horario?: string;
+  ativo?: boolean;
+}
+
+export type AtualizarHabitoPayload = Partial<NovoHabitoPayload>;
+
+export const DIAS_SEMANA_OPCOES: DiaSemana[] = [
+  'Segunda',
+  'Terça',
+  'Quarta',
+  'Quinta',
+  'Sexta',
+  'Sábado',
+  'Domingo',
+];
+
 export const STATUS_ITEM_OPCOES: StatusItem[] = [
   'Pendente',
   'Em Andamento',
