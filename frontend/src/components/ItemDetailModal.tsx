@@ -306,7 +306,15 @@ export default function ItemDetailModal({ item, onClose }: ItemDetailModalProps)
             {salvar.isSuccess && <span className="text-status-concluida">Alterações salvas.</span>}
             {excluir.isError && <span className="text-status-bloqueada">{(excluir.error as Error).message}</span>}
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
+            <a
+              href="https://app.xmind.com/Ocve3Pj6"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="rounded-lg bg-bg-elevated px-4 py-2 text-sm font-medium text-text-muted hover:text-text-primary"
+            >
+              Mapa mental ↗
+            </a>
             <button
               onClick={confirmarExclusao}
               disabled={excluir.isPending}
