@@ -115,6 +115,61 @@ export const DIAS_SEMANA_OPCOES: DiaSemana[] = [
   'Domingo',
 ];
 
+export type TipoRecorrencia = 'Diária' | 'Semanal' | 'Mensal';
+
+export const TIPO_RECORRENCIA_OPCOES: TipoRecorrencia[] = ['Diária', 'Semanal', 'Mensal'];
+
+export interface Rotina {
+  id: string;
+  nome: string;
+  tipoRecorrencia: TipoRecorrencia;
+  tempoTotal: number;
+  ativo: boolean;
+}
+
+export interface RotinaComProgresso extends Rotina {
+  periodoInicio: string;
+  periodoFim: string;
+  tempoRealizado: number;
+  atingiuTotal: boolean;
+}
+
+export interface NovaRotinaPayload {
+  nome: string;
+  tipoRecorrencia: TipoRecorrencia;
+  tempoTotal: number;
+  ativo?: boolean;
+}
+
+export type AtualizarRotinaPayload = Partial<NovaRotinaPayload>;
+
+export interface ApontamentoRotina {
+  id: string;
+  rotinaId: string | null;
+  data: string;
+  minutos: number;
+  observacao: string;
+}
+
+export interface NovoApontamentoPayload {
+  data: string;
+  minutos: number;
+  observacao?: string;
+}
+
+export interface ResultadoApontamento {
+  apontamento: ApontamentoRotina;
+  tempoRealizado: number;
+  tempoTotal: number;
+  atingiuTotal: boolean;
+}
+
+export interface Destinatario {
+  id: string;
+  email: string;
+  ativo: boolean;
+}
+
 export const STATUS_ITEM_OPCOES: StatusItem[] = [
   'Pendente',
   'Em Andamento',

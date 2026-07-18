@@ -27,6 +27,9 @@ const TEMAS_DB_ID = '92651600-a190-459f-b054-b0fb3a0736fb';
 const ITENS_DB_ID = '8628bb86-8a72-4607-80a6-1da5d1938843';
 const HABITOS_DB_ID = '39fa1a73-667d-81a2-900e-c00d817ff521';
 const REGISTROS_HABITOS_DB_ID = '39fa1a73-667d-810f-a8ff-fbb79ca41ee6';
+const ROTINAS_DB_ID = '3a1a1a73-667d-81aa-90e3-d7e3ffad55f2';
+const APONTAMENTOS_ROTINA_DB_ID = '3a1a1a73-667d-813c-92a6-dc60b486cb66';
+const DESTINATARIOS_DB_ID = '3a1a1a73-667d-81a9-8107-f914307562f7';
 
 const notion = new Client({ auth: process.env.NOTION_API_KEY });
 
@@ -47,6 +50,65 @@ const DIAS_SEMANA = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta'
 function diaDaSemanaDe(dataStr) {
   const [ano, mes, dia] = dataStr.split('-').map(Number);
   return DIAS_SEMANA[new Date(Date.UTC(ano, mes - 1, dia)).getUTCDay()];
+}
+
+/** Formata um objeto Date (interpretado em UTC) como "YYYY-MM-DD". */
+function paraISO(data) {
+  const ano = data.getUTCFullYear();
+  const mes = String(data.getUTCMonth() + 1).padStart(2, '0');
+  const dia = String(data.getUTCDate()).padStart(2, '0');
+  return `${ano}-${mes}-${dia}`;
+}
+
+/**
+ * Calcula o período (início/fim, ambos "YYYY-MM-DD", inclusive) de uma
+ * rotina de acordo com o tipo de recorrência, dado um "dataAncora"
+ * ("YYYY-MM-DD") que cai dentro desse período. Usa aritmética em UTC pelo
+ * mesmo motivo de diaDaSemanaDe(): evitar bug de fuso horário.
+ * - Diária: o próprio dia.
+ * - Semanal: segunda a domingo da semana que contém a âncora.
+ * - Mensal: dia 1 ao último dia do mês da âncora.
+ */
+function periodoDaRotina(tipoRecorrencia, dataAncora) {
+  const [ano, mes, dia] = dataAncora.split('-').map(Number);
+  const ancora = new Date(Date.UTC(ano, mes - 1, dia));
+
+  if (tipoRecorrencia === 'Semanal') {
+    const diaSemanaIdx = ancora.getUTCDay(); // 0=domingo..6=sábado
+    const deslocamentoAteSegunda = diaSemanaIdx === 0 ? 6 : diaSemanaIdx - 1;
+    const inicio = new Date(ancora);
+    inicio.setUTCDate(ancora.getUTCDate() - deslocamentoAteSegunda);
+    const fim = new Date(inicio);
+    fim.setUTCDate(inicio.getUTCDate() + 6);
+    return { inicio: paraISO(inicio), fim: paraISO(fim) };
+  }
+
+  if (tipoRecorrencia === 'Mensal') {
+    const inicio = new Date(Date.UTC(ano, mes - 1, 1));
+    const fim = new Date(Date.UTC(ano, mes, 0)); // dia 0 do mês seguinte = último dia deste mês
+    return { inicio: paraISO(inicio), fim: paraISO(fim) };
+  }
+
+  // Diária (default)
+  return { inicio: dataAncora, fim: dataAncora };
+}
+
+/** Data de hoje em "YYYY-MM-DD" no fuso America/Sao_Paulo (usado pelo cron, que não tem um cliente/navegador para informar a data local). */
+function hojeSaoPaulo() {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Sao_Paulo',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(new Date());
+}
+
+/** "Ontem" em "YYYY-MM-DD" no fuso America/Sao_Paulo. */
+function ontemSaoPaulo() {
+  const [ano, mes, dia] = hojeSaoPaulo().split('-').map(Number);
+  const d = new Date(Date.UTC(ano, mes - 1, dia));
+  d.setUTCDate(d.getUTCDate() - 1);
+  return paraISO(d);
 }
 
 // ---------------------------------------------------------------------
@@ -168,6 +230,37 @@ function mapRegistro(page) {
     id: page.id,
     habitoId: getRelationIds(p['Hábito'])[0] || null,
     data: getDate(p['Data']),
+  };
+}
+
+function mapRotina(page) {
+  const p = page.properties;
+  return {
+    id: page.id,
+    nome: getTitle(p['Nome da Rotina']),
+    tipoRecorrencia: getSelect(p['Tipo de Recorrência']),
+    tempoTotal: getNumber(p['Tempo Total (Minutos)']) || 0,
+    ativo: getCheckbox(p['Ativo']),
+  };
+}
+
+function mapApontamentoRotina(page) {
+  const p = page.properties;
+  return {
+    id: page.id,
+    rotinaId: getRelationIds(p['Rotina'])[0] || null,
+    data: getDate(p['Data']),
+    minutos: getNumber(p['Minutos']) || 0,
+    observacao: getRichText(p['Observação']),
+  };
+}
+
+function mapDestinatario(page) {
+  const p = page.properties;
+  return {
+    id: page.id,
+    email: getTitle(p['Email']),
+    ativo: getCheckbox(p['Ativo']),
   };
 }
 
@@ -670,11 +763,283 @@ async function getHistoricoHabito(habitoId, dias = 30) {
   return response.results.map(mapRegistro).map((r) => r.data).filter(Boolean);
 }
 
+// ---------------------------------------------------------------------
+// Rotinas
+// ---------------------------------------------------------------------
+
+/** Lista as rotinas sem calcular progresso (usado internamente). */
+async function listRotinasBrutas(filtros = {}) {
+  const query = { database_id: ROTINAS_DB_ID, page_size: 100 };
+  if (typeof filtros.ativo === 'boolean') {
+    query.filter = { property: 'Ativo', checkbox: { equals: filtros.ativo } };
+  }
+
+  const results = [];
+  let cursor;
+  do {
+    const response = await notion.databases.query({ ...query, start_cursor: cursor });
+    results.push(...response.results);
+    cursor = response.has_more ? response.next_cursor : undefined;
+  } while (cursor);
+
+  return results.map(mapRotina);
+}
+
+/**
+ * Lista apontamentos de rotina com filtros opcionais combinados com AND:
+ * rotinaId, dataExata, dataInicio ("on_or_after"), dataFim ("on_or_before").
+ */
+async function listApontamentosBrutos(filtros = {}) {
+  const andFilters = [];
+  if (filtros.rotinaId) {
+    andFilters.push({ property: 'Rotina', relation: { contains: filtros.rotinaId } });
+  }
+  if (filtros.dataExata) {
+    andFilters.push({ property: 'Data', date: { equals: filtros.dataExata } });
+  }
+  if (filtros.dataInicio) {
+    andFilters.push({ property: 'Data', date: { on_or_after: filtros.dataInicio } });
+  }
+  if (filtros.dataFim) {
+    andFilters.push({ property: 'Data', date: { on_or_before: filtros.dataFim } });
+  }
+
+  const query = { database_id: APONTAMENTOS_ROTINA_DB_ID, page_size: 100 };
+  if (andFilters.length === 1) query.filter = andFilters[0];
+  if (andFilters.length > 1) query.filter = { and: andFilters };
+
+  const results = [];
+  let cursor;
+  do {
+    const response = await notion.databases.query({ ...query, start_cursor: cursor });
+    results.push(...response.results);
+    cursor = response.has_more ? response.next_cursor : undefined;
+  } while (cursor);
+
+  return results.map(mapApontamentoRotina);
+}
+
+/**
+ * Lista rotinas com o progresso (tempoRealizado/atingiuTotal) do período de
+ * recorrência que contém "dataAncora" ("YYYY-MM-DD"). Para evitar N+1
+ * queries ao Notion, busca os apontamentos de todas as rotinas numa única
+ * chamada (desde o início do período mais antigo entre todas) e soma em
+ * memória, respeitando o período específico de cada rotina.
+ */
+async function listRotinas(dataAncora, filtros = {}) {
+  const rotinas = await listRotinasBrutas(filtros);
+  if (rotinas.length === 0) return [];
+
+  const periodos = new Map(rotinas.map((r) => [r.id, periodoDaRotina(r.tipoRecorrencia, dataAncora)]));
+  const menorInicio = Array.from(periodos.values())
+    .map((p) => p.inicio)
+    .sort()[0];
+
+  const apontamentos = await listApontamentosBrutos({ dataInicio: menorInicio, dataFim: dataAncora });
+
+  const somaPorRotina = {};
+  for (const ap of apontamentos) {
+    const periodo = periodos.get(ap.rotinaId);
+    if (!periodo) continue;
+    if (ap.data >= periodo.inicio && ap.data <= periodo.fim) {
+      somaPorRotina[ap.rotinaId] = (somaPorRotina[ap.rotinaId] || 0) + ap.minutos;
+    }
+  }
+
+  return rotinas.map((r) => {
+    const periodo = periodos.get(r.id);
+    const tempoRealizado = somaPorRotina[r.id] || 0;
+    return {
+      ...r,
+      periodoInicio: periodo.inicio,
+      periodoFim: periodo.fim,
+      tempoRealizado,
+      atingiuTotal: r.tempoTotal > 0 && tempoRealizado >= r.tempoTotal,
+    };
+  });
+}
+
+/** Cria uma nova rotina. */
+async function createRotina(dados) {
+  const properties = {
+    'Nome da Rotina': { title: [{ text: { content: dados.nome || 'Sem nome' } }] },
+    'Tipo de Recorrência': { select: { name: dados.tipoRecorrencia || 'Diária' } },
+    'Tempo Total (Minutos)': { number: Number(dados.tempoTotal) || 0 },
+    Ativo: { checkbox: dados.ativo === undefined ? true : !!dados.ativo },
+  };
+
+  const page = await notion.pages.create({ parent: { database_id: ROTINAS_DB_ID }, properties });
+  return mapRotina(page);
+}
+
+/** Atualiza campos de uma rotina existente. */
+async function updateRotina(rotinaId, dados) {
+  const properties = {};
+
+  if (dados.nome !== undefined) {
+    properties['Nome da Rotina'] = { title: [{ text: { content: dados.nome } }] };
+  }
+  if (dados.tipoRecorrencia !== undefined) {
+    properties['Tipo de Recorrência'] = { select: { name: dados.tipoRecorrencia } };
+  }
+  if (dados.tempoTotal !== undefined) {
+    properties['Tempo Total (Minutos)'] = { number: Number(dados.tempoTotal) || 0 };
+  }
+  if (dados.ativo !== undefined) {
+    properties['Ativo'] = { checkbox: !!dados.ativo };
+  }
+
+  const page = await notion.pages.update({ page_id: rotinaId, properties });
+  return mapRotina(page);
+}
+
+/**
+ * Exclui (arquiva no Notion) uma rotina. Os apontamentos já lançados
+ * permanecem no histórico.
+ */
+async function deleteRotina(rotinaId) {
+  await notion.pages.update({ page_id: rotinaId, archived: true });
+}
+
+/** Apontamentos de uma rotina dentro do período de recorrência que contém "dataAncora". */
+async function listApontamentosDaRotina(rotinaId, dataAncora) {
+  const rotinaPage = await notion.pages.retrieve({ page_id: rotinaId });
+  const rotina = mapRotina(rotinaPage);
+  const periodo = periodoDaRotina(rotina.tipoRecorrencia, dataAncora);
+  const apontamentos = await listApontamentosBrutos({
+    rotinaId,
+    dataInicio: periodo.inicio,
+    dataFim: periodo.fim,
+  });
+  return apontamentos.sort((a, b) => (b.data || '').localeCompare(a.data || ''));
+}
+
+/**
+ * Registra um apontamento de tempo para uma rotina. Antes de criar, soma os
+ * apontamentos já lançados no período de recorrência que contém "data": se
+ * a soma já tiver atingido (ou passado) o Tempo Total da rotina, recusa o
+ * apontamento com 409 — não é permitido lançar mais tempo até o próximo
+ * período.
+ */
+async function criarApontamento(rotinaId, dados) {
+  const minutos = Number(dados.minutos);
+  const data = dados.data;
+
+  const rotinaPage = await notion.pages.retrieve({ page_id: rotinaId });
+  const rotina = mapRotina(rotinaPage);
+  const periodo = periodoDaRotina(rotina.tipoRecorrencia, data);
+
+  const apontamentosPeriodo = await listApontamentosBrutos({
+    rotinaId,
+    dataInicio: periodo.inicio,
+    dataFim: periodo.fim,
+  });
+  const somaAtual = apontamentosPeriodo.reduce((acc, a) => acc + a.minutos, 0);
+
+  if (rotina.tempoTotal > 0 && somaAtual >= rotina.tempoTotal) {
+    const err = new Error(
+      `O tempo total (${rotina.tempoTotal} min) da rotina "${rotina.nome}" já foi atingido neste período (${periodo.inicio} a ${periodo.fim}). Novos apontamentos só serão permitidos no próximo período.`
+    );
+    err.status = 409;
+    throw err;
+  }
+
+  const properties = {
+    Nome: { title: [{ text: { content: `${rotina.nome} — ${data}` } }] },
+    Rotina: { relation: [{ id: rotinaId }] },
+    Data: { date: { start: data } },
+    Minutos: { number: minutos },
+  };
+  if (dados.observacao) {
+    properties['Observação'] = { rich_text: buildRichText(dados.observacao) };
+  }
+
+  const page = await notion.pages.create({ parent: { database_id: APONTAMENTOS_ROTINA_DB_ID }, properties });
+  const tempoRealizado = somaAtual + minutos;
+
+  return {
+    apontamento: mapApontamentoRotina(page),
+    tempoRealizado,
+    tempoTotal: rotina.tempoTotal,
+    atingiuTotal: rotina.tempoTotal > 0 && tempoRealizado >= rotina.tempoTotal,
+  };
+}
+
+/** Remove (arquiva) um apontamento lançado por engano. */
+async function deleteApontamento(apontamentoId) {
+  await notion.pages.update({ page_id: apontamentoId, archived: true });
+}
+
+/** Lista os destinatários cadastrados para o resumo diário por e-mail. */
+async function listDestinatarios() {
+  const response = await notion.databases.query({ database_id: DESTINATARIOS_DB_ID, page_size: 100 });
+  return response.results.map(mapDestinatario);
+}
+
+/** Cadastra um novo destinatário de e-mail. */
+async function createDestinatario(email) {
+  const page = await notion.pages.create({
+    parent: { database_id: DESTINATARIOS_DB_ID },
+    properties: {
+      Email: { title: [{ text: { content: email } }] },
+      Ativo: { checkbox: true },
+    },
+  });
+  return mapDestinatario(page);
+}
+
+/** Ativa/desativa um destinatário (sem apagá-lo). */
+async function updateDestinatario(destinatarioId, dados) {
+  const properties = {};
+  if (dados.ativo !== undefined) {
+    properties.Ativo = { checkbox: !!dados.ativo };
+  }
+  const page = await notion.pages.update({ page_id: destinatarioId, properties });
+  return mapDestinatario(page);
+}
+
+/** Remove (arquiva) um destinatário. */
+async function deleteDestinatario(destinatarioId) {
+  await notion.pages.update({ page_id: destinatarioId, archived: true });
+}
+
+/**
+ * Monta o resumo executivo das rotinas que tiveram tempo apontado em
+ * "dataAlvo" ("YYYY-MM-DD") — usado pelo envio diário por e-mail.
+ */
+async function getResumoDiario(dataAlvo) {
+  const [rotinas, apontamentosDoDia] = await Promise.all([
+    listRotinasBrutas(),
+    listApontamentosBrutos({ dataExata: dataAlvo }),
+  ]);
+
+  const minutosPorRotina = new Map();
+  for (const ap of apontamentosDoDia) {
+    if (!ap.rotinaId) continue;
+    minutosPorRotina.set(ap.rotinaId, (minutosPorRotina.get(ap.rotinaId) || 0) + ap.minutos);
+  }
+
+  const rotinasDoResumo = rotinas
+    .filter((r) => minutosPorRotina.has(r.id))
+    .map((r) => ({
+      nome: r.nome,
+      tipoRecorrencia: r.tipoRecorrencia,
+      tempoTotal: r.tempoTotal,
+      minutosNoDia: minutosPorRotina.get(r.id),
+    }))
+    .sort((a, b) => b.minutosNoDia - a.minutosNoDia);
+
+  return { data: dataAlvo, rotinas: rotinasDoResumo };
+}
+
 module.exports = {
   TEMAS_DB_ID,
   ITENS_DB_ID,
   HABITOS_DB_ID,
   REGISTROS_HABITOS_DB_ID,
+  ROTINAS_DB_ID,
+  APONTAMENTOS_ROTINA_DB_ID,
+  DESTINATARIOS_DB_ID,
   listTemas,
   createTema,
   updateTema,
@@ -694,4 +1059,17 @@ module.exports = {
   setCheckin,
   getHabitosHoje,
   getHistoricoHabito,
+  listRotinas,
+  createRotina,
+  updateRotina,
+  deleteRotina,
+  listApontamentosDaRotina,
+  criarApontamento,
+  deleteApontamento,
+  listDestinatarios,
+  createDestinatario,
+  updateDestinatario,
+  deleteDestinatario,
+  getResumoDiario,
+  ontemSaoPaulo,
 };

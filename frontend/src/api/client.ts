@@ -11,6 +11,14 @@ import type {
   HabitoHoje,
   NovoHabitoPayload,
   AtualizarHabitoPayload,
+  Rotina,
+  RotinaComProgresso,
+  NovaRotinaPayload,
+  AtualizarRotinaPayload,
+  ApontamentoRotina,
+  NovoApontamentoPayload,
+  ResultadoApontamento,
+  Destinatario,
 } from './types';
 
 // Em dev local, aponta para o backend na porta 4000 por padrão. Em produção
@@ -113,6 +121,35 @@ export const api = {
     }),
   historicoHabito: (id: string, dias = 30) =>
     request<{ datasConcluidas: string[] }>(`/api/habitos/${id}/historico${buildQuery({ dias: String(dias) })}`),
+
+  // Rotinas
+  listarRotinas: (data: string, ativo?: boolean) =>
+    request<RotinaComProgresso[]>(
+      `/api/rotinas${buildQuery({ data, ativo: ativo === undefined ? undefined : String(ativo) })}`
+    ),
+  criarRotina: (dados: NovaRotinaPayload) =>
+    request<Rotina>('/api/rotinas', { method: 'POST', body: JSON.stringify(dados) }),
+  atualizarRotina: (id: string, dados: AtualizarRotinaPayload) =>
+    request<Rotina>(`/api/rotinas/${id}`, { method: 'PATCH', body: JSON.stringify(dados) }),
+  excluirRotina: (id: string) => request<void>(`/api/rotinas/${id}`, { method: 'DELETE' }),
+  listarApontamentos: (rotinaId: string, data: string) =>
+    request<ApontamentoRotina[]>(`/api/rotinas/${rotinaId}/apontamentos${buildQuery({ data })}`),
+  criarApontamento: (rotinaId: string, dados: NovoApontamentoPayload) =>
+    request<ResultadoApontamento>(`/api/rotinas/${rotinaId}/apontamentos`, {
+      method: 'POST',
+      body: JSON.stringify(dados),
+    }),
+  excluirApontamento: (apontamentoId: string) =>
+    request<void>(`/api/rotinas/apontamentos/${apontamentoId}`, { method: 'DELETE' }),
+
+  // Destinatários do resumo diário
+  listarDestinatarios: () => request<Destinatario[]>('/api/rotinas/destinatarios'),
+  criarDestinatario: (email: string) =>
+    request<Destinatario>('/api/rotinas/destinatarios', { method: 'POST', body: JSON.stringify({ email }) }),
+  atualizarDestinatario: (id: string, dados: { ativo: boolean }) =>
+    request<Destinatario>(`/api/rotinas/destinatarios/${id}`, { method: 'PATCH', body: JSON.stringify(dados) }),
+  excluirDestinatario: (id: string) =>
+    request<void>(`/api/rotinas/destinatarios/${id}`, { method: 'DELETE' }),
 };
 
 export { ApiError };
