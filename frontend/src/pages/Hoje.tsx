@@ -5,6 +5,7 @@ import { api } from '../api/client';
 import { Carregando, Erro, Vazio } from '../components/Estado';
 import { PrioridadePill, StatusPill } from '../components/Pills';
 import ItemDetailModal from '../components/ItemDetailModal';
+import CardRotina from '../components/RotinaCard';
 import type { Item } from '../api/types';
 import { hojeLocalISO } from '../utils/data';
 
@@ -28,6 +29,11 @@ export default function Hoje() {
     mutationFn: ({ id, valor }: { id: string; valor: boolean }) =>
       api.alternarCheckinHabito(id, dataHoje, valor),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['habitos-hoje', dataHoje] }),
+  });
+
+  const rotinasHojeQuery = useQuery({
+    queryKey: ['rotinas', dataHoje, { ativo: true }],
+    queryFn: () => api.listarRotinas(dataHoje, true),
   });
 
   const criarMutation = useMutation({
@@ -212,6 +218,28 @@ export default function Hoje() {
               </li>
             ))}
           </ul>
+        )}
+      </section>
+
+      <section>
+        <div className="mb-3 flex items-center justify-between">
+          <h2 className="text-lg font-semibold">Rotinas de hoje</h2>
+          <Link to="/rotinas" className="text-sm text-accent-secondary hover:underline">
+            gerenciar rotinas →
+          </Link>
+        </div>
+        {rotinasHojeQuery.isLoading ? (
+          <Carregando texto="Carregando rotinas..." />
+        ) : rotinasHojeQuery.isError ? (
+          <Erro mensagem={(rotinasHojeQuery.error as Error).message} />
+        ) : (rotinasHojeQuery.data ?? []).length === 0 ? (
+          <Vazio texto="Nenhuma rotina ativa cadastrada ainda. Cadastre em 'gerenciar rotinas'." />
+        ) : (
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {(rotinasHojeQuery.data ?? []).map((rotina) => (
+              <CardRotina key={rotina.id} rotina={rotina} dataHoje={dataHoje} />
+            ))}
+          </div>
         )}
       </section>
 
