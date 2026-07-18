@@ -100,7 +100,7 @@ export default function Hoje() {
         )}
       </section>
 
-      <section>
+      <section className="rounded-2xl border border-white/10 bg-bg-surface/30 p-4 sm:p-5">
         <div className="mb-3 flex items-center justify-between">
           <h2 className="text-lg font-semibold">Temas em foco esta semana</h2>
           <Link to="/temas" className="text-sm text-accent-secondary hover:underline">
@@ -134,7 +134,7 @@ export default function Hoje() {
         )}
       </section>
 
-      <section>
+      <section className="rounded-2xl border border-white/10 bg-bg-surface/30 p-4 sm:p-5">
         <h2 className="mb-3 text-lg font-semibold">Priorizado para hoje</h2>
         {itensHoje.length === 0 ? (
           <Vazio texto="Nada priorizado para hoje ainda. Use a Tabela, o Kanban ou o detalhe de um item para marcar 'Priorizar para hoje'." />
@@ -171,7 +171,7 @@ export default function Hoje() {
         )}
       </section>
 
-      <section>
+      <section className="rounded-2xl border border-white/10 bg-bg-surface/30 p-4 sm:p-5">
         <div className="mb-3 flex items-center justify-between">
           <h2 className="text-lg font-semibold">Hábitos de hoje</h2>
           <Link to="/habitos" className="text-sm text-accent-secondary hover:underline">
@@ -221,7 +221,7 @@ export default function Hoje() {
         )}
       </section>
 
-      <section>
+      <section className="rounded-2xl border border-white/10 bg-bg-surface/30 p-4 sm:p-5">
         <div className="mb-3 flex items-center justify-between">
           <h2 className="text-lg font-semibold">Rotinas de hoje</h2>
           <Link to="/rotinas" className="text-sm text-accent-secondary hover:underline">
