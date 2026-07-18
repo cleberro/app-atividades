@@ -34,6 +34,21 @@ router.post('/', async (req, res, next) => {
   }
 });
 
+// PATCH /api/temas/:id - atualiza nome/categoria/descricao/status/prioridade/ordem
+router.patch('/:id', async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    if (req.body.nome !== undefined && !req.body.nome.trim()) {
+      return res.status(400).json({ error: 'Campo "nome" não pode ficar vazio.' });
+    }
+    const tema = await notionService.updateTema(id, req.body);
+    cache.invalidate(['temas:', 'dashboard:']);
+    res.json(tema);
+  } catch (err) {
+    next(err);
+  }
+});
+
 // PATCH /api/temas/:id/foco - alterna "Foco da Semana"
 router.patch('/:id/foco', async (req, res, next) => {
   try {

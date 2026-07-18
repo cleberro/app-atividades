@@ -7,6 +7,7 @@ import { PrioridadePill } from '../components/Pills';
 import { PRIORIDADE_OPCOES } from '../api/types';
 import MultiSelectFiltro, { FILTRO_MULTI_VAZIO, passaFiltroMulti, type FiltroMultiValor } from '../components/MultiSelectFiltro';
 import TemaForm from '../components/TemaForm';
+import type { Tema } from '../api/types';
 
 export default function Temas() {
   const queryClient = useQueryClient();
@@ -14,7 +15,7 @@ export default function Temas() {
   const [filtroStatus, setFiltroStatus] = useState<FiltroMultiValor>(FILTRO_MULTI_VAZIO);
   const [filtroCategoria, setFiltroCategoria] = useState<FiltroMultiValor>(FILTRO_MULTI_VAZIO);
   const [filtroPrioridade, setFiltroPrioridade] = useState<FiltroMultiValor>(FILTRO_MULTI_VAZIO);
-  const [mostrarForm, setMostrarForm] = useState(false);
+  const [formAberto, setFormAberto] = useState<'novo' | Tema | null>(null);
 
   const { data, isLoading, isError, error } = useQuery({
     queryKey: ['temas'],
@@ -87,14 +88,17 @@ export default function Temas() {
           </p>
         </div>
         <button
-          onClick={() => setMostrarForm((v) => !v)}
+          onClick={() => setFormAberto((v) => (v === 'novo' ? null : 'novo'))}
           className="shrink-0 rounded-lg bg-accent-primary px-4 py-2 text-sm font-semibold text-white transition-transform hover:-translate-y-0.5"
         >
-          {mostrarForm ? 'Fechar' : '+ Novo Tema'}
+          {formAberto === 'novo' ? 'Fechar' : '+ Novo Tema'}
         </button>
       </header>
 
-      {mostrarForm && <TemaForm onSucesso={() => setMostrarForm(false)} />}
+      {formAberto === 'novo' && <TemaForm onSucesso={() => setFormAberto(null)} />}
+      {formAberto && formAberto !== 'novo' && (
+        <TemaForm temaEditando={formAberto} onSucesso={() => setFormAberto(null)} />
+      )}
 
       <div className="card flex flex-wrap items-center gap-3 p-3">
         <input
@@ -148,6 +152,13 @@ export default function Temas() {
                 </Link>
                 <div className="flex shrink-0 items-center gap-2">
                   <PrioridadePill prioridade={tema.prioridade} />
+                  <button
+                    onClick={() => setFormAberto(tema)}
+                    aria-label={`Editar tema ${tema.nome}`}
+                    className="rounded-lg px-2 py-1 text-xs font-medium text-text-muted hover:bg-bg-elevated hover:text-text-primary"
+                  >
+                    Editar
+                  </button>
                   <button
                     onClick={() => confirmarExclusao(tema.id, tema.nome)}
                     disabled={excluirTema.isPending}

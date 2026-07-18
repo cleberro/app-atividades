@@ -4,6 +4,7 @@ import type {
   NovoItemPayload,
   AtualizarItemPayload,
   NovoTemaPayload,
+  AtualizarTemaPayload,
   KanbanColunas,
   DashboardSemana,
   Habito,
@@ -64,6 +65,8 @@ export const api = {
   listarTemas: () => request<Tema[]>('/api/temas'),
   criarTema: (dados: NovoTemaPayload) =>
     request<Tema>('/api/temas', { method: 'POST', body: JSON.stringify(dados) }),
+  atualizarTema: (id: string, dados: AtualizarTemaPayload) =>
+    request<Tema>(`/api/temas/${id}`, { method: 'PATCH', body: JSON.stringify(dados) }),
   alternarFocoSemana: (id: string, focoDaSemana: boolean) =>
     request<Tema>(`/api/temas/${id}/foco`, {
       method: 'PATCH',

@@ -1,30 +1,34 @@
 import { useMemo, useState, FormEvent } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../api/client';
-import type { NovoTemaPayload, Prioridade, StatusTema } from '../api/types';
+import type { NovoTemaPayload, Prioridade, StatusTema, Tema } from '../api/types';
 import { PRIORIDADE_OPCOES, STATUS_TEMA_OPCOES } from '../api/types';
 
 interface TemaFormProps {
+  temaEditando?: Tema;
   onSucesso?: () => void;
   compacto?: boolean;
 }
 
 /**
- * Formulário de criação manual de um novo Tema. Categoria é um campo livre
- * (com sugestões das categorias já existentes) porque o Notion cria a opção
- * de Select automaticamente quando recebe um valor novo — não é preciso
- * alterar o schema da base para adicionar uma categoria nova.
+ * Formulário de criação/edição de um Tema. Sem "temaEditando", cria um tema
+ * novo; com "temaEditando", pré-preenche os campos e salva as alterações
+ * nele. Categoria é um campo livre (com sugestões das categorias já
+ * existentes) porque o Notion cria a opção de Select automaticamente quando
+ * recebe um valor novo — não é preciso alterar o schema da base para
+ * adicionar uma categoria nova.
  */
-export default function TemaForm({ onSucesso, compacto }: TemaFormProps) {
+export default function TemaForm({ temaEditando, onSucesso, compacto }: TemaFormProps) {
   const queryClient = useQueryClient();
   const { data: temas } = useQuery({ queryKey: ['temas'], queryFn: api.listarTemas });
+  const editando = !!temaEditando;
 
-  const [nome, setNome] = useState('');
-  const [categoria, setCategoria] = useState('');
-  const [descricao, setDescricao] = useState('');
-  const [status, setStatus] = useState<StatusTema>('Ativo');
-  const [prioridade, setPrioridade] = useState<Prioridade>('Média');
-  const [ordem, setOrdem] = useState('');
+  const [nome, setNome] = useState(temaEditando?.nome ?? '');
+  const [categoria, setCategoria] = useState(temaEditando?.categoria ?? '');
+  const [descricao, setDescricao] = useState(temaEditando?.descricao ?? '');
+  const [status, setStatus] = useState<StatusTema>(temaEditando?.status ?? 'Ativo');
+  const [prioridade, setPrioridade] = useState<Prioridade>(temaEditando?.prioridade ?? 'Média');
+  const [ordem, setOrdem] = useState(temaEditando?.ordem != null ? String(temaEditando.ordem) : '');
 
   const categoriasExistentes = useMemo(() => {
     const set = new Set<string>();
@@ -33,16 +37,19 @@ export default function TemaForm({ onSucesso, compacto }: TemaFormProps) {
   }, [temas]);
 
   const mutation = useMutation({
-    mutationFn: (payload: NovoTemaPayload) => api.criarTema(payload),
+    mutationFn: (payload: NovoTemaPayload) =>
+      editando ? api.atualizarTema(temaEditando!.id, payload) : api.criarTema(payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['temas'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard-semana'] });
-      setNome('');
-      setCategoria('');
-      setDescricao('');
-      setStatus('Ativo');
-      setPrioridade('Média');
-      setOrdem('');
+      if (!editando) {
+        setNome('');
+        setCategoria('');
+        setDescricao('');
+        setStatus('Ativo');
+        setPrioridade('Média');
+        setOrdem('');
+      }
       onSucesso?.();
     },
   });
@@ -149,13 +156,21 @@ export default function TemaForm({ onSucesso, compacto }: TemaFormProps) {
         disabled={mutation.isPending || !nome.trim()}
         className="mt-1 self-start rounded-lg bg-accent-primary px-4 py-2 text-sm font-semibold text-white transition-transform hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-50"
       >
-        {mutation.isPending ? 'Criando...' : 'Criar tema'}
+        {mutation.isPending
+          ? 'Salvando...'
+          : editando
+            ? 'Salvar alterações'
+            : 'Criar tema'}
       </button>
 
       {mutation.isError && (
         <p className="text-xs text-status-bloqueada">{(mutation.error as Error).message}</p>
       )}
-      {mutation.isSuccess && <p className="text-xs text-status-concluida">Tema criado com sucesso.</p>}
+      {mutation.isSuccess && (
+        <p className="text-xs text-status-concluida">
+          {editando ? 'Tema atualizado com sucesso.' : 'Tema criado com sucesso.'}
+        </p>
+      )}
     </form>
   );
 }

@@ -5,6 +5,7 @@ import { api } from '../api/client';
 import { Carregando, Erro, Vazio } from '../components/Estado';
 import { PrioridadePill, StatusPill } from '../components/Pills';
 import ItemForm from '../components/ItemForm';
+import TemaForm from '../components/TemaForm';
 import FiltrosItens, { FILTROS_VAZIOS, type FiltrosItensValor } from '../components/FiltrosItens';
 import { passaFiltroMulti } from '../components/MultiSelectFiltro';
 import { passaFiltroPrazo } from '../components/FiltroPrazo';
@@ -19,6 +20,7 @@ export default function TemaDetail() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [mostrarForm, setMostrarForm] = useState(false);
+  const [editandoTema, setEditandoTema] = useState(false);
   const [filtros, setFiltros] = useEstadoPersistente<FiltrosItensValor>('filtros-tema-detail', FILTROS_VAZIOS);
   const [ordenacao, setOrdenacao] = useState<CriterioOrdenacao>('padrao');
   const [itemSelecionado, setItemSelecionado] = useState<Item | null>(null);
@@ -102,6 +104,12 @@ export default function TemaDetail() {
           <div className="flex items-center gap-2">
             <PrioridadePill prioridade={tema.prioridade} />
             <button
+              onClick={() => setEditandoTema((v) => !v)}
+              className="rounded-lg bg-bg-elevated px-3 py-1.5 text-sm font-medium text-text-muted hover:text-text-primary"
+            >
+              {editandoTema ? 'Fechar' : 'Editar tema'}
+            </button>
+            <button
               onClick={confirmarExclusaoTema}
               disabled={excluirTema.isPending}
               className="rounded-lg bg-status-bloqueada/15 px-3 py-1.5 text-sm font-medium text-status-bloqueada hover:bg-status-bloqueada/25 disabled:cursor-not-allowed disabled:opacity-50"
@@ -112,6 +120,9 @@ export default function TemaDetail() {
         </div>
         {excluirTema.isError && (
           <p className="text-sm text-status-bloqueada">{(excluirTema.error as Error).message}</p>
+        )}
+        {editandoTema && (
+          <TemaForm temaEditando={tema} compacto onSucesso={() => setEditandoTema(false)} />
         )}
         <div className="flex flex-wrap items-center gap-2 text-xs text-text-muted">
           {tema.categoria && <span className="pill bg-bg-elevated">{tema.categoria}</span>}

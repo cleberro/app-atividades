@@ -62,6 +62,8 @@ export interface NovoTemaPayload {
   ordem?: number;
 }
 
+export type AtualizarTemaPayload = Partial<NovoTemaPayload>;
+
 export interface KanbanColunas {
   [status: string]: Item[];
 }

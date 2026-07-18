@@ -260,6 +260,36 @@ async function setFocoSemana(temaId, valor) {
 }
 
 /**
+ * Atualiza campos de um tema existente (nome, categoria, descricao,
+ * status, prioridade, ordem). Só altera os campos presentes em "dados".
+ */
+async function updateTema(temaId, dados) {
+  const properties = {};
+
+  if (dados.nome !== undefined) {
+    properties.Nome = { title: [{ text: { content: dados.nome } }] };
+  }
+  if (dados.categoria !== undefined) {
+    properties.Categoria = { select: dados.categoria ? { name: dados.categoria } : null };
+  }
+  if (dados.descricao !== undefined) {
+    properties['Descrição'] = { rich_text: buildRichText(dados.descricao) };
+  }
+  if (dados.status !== undefined) {
+    properties.Status = { select: dados.status ? { name: dados.status } : null };
+  }
+  if (dados.prioridade !== undefined) {
+    properties.Prioridade = { select: dados.prioridade ? { name: dados.prioridade } : null };
+  }
+  if (dados.ordem !== undefined) {
+    properties.Ordem = { number: dados.ordem === null || dados.ordem === '' ? null : Number(dados.ordem) };
+  }
+
+  const page = await notion.pages.update({ page_id: temaId, properties });
+  return mapTema(page);
+}
+
+/**
  * Exclui (arquiva no Notion) um tema. Recusa a exclusao se ainda existirem
  * itens vinculados a ele, para evitar itens orfaos.
  */
@@ -647,6 +677,7 @@ module.exports = {
   REGISTROS_HABITOS_DB_ID,
   listTemas,
   createTema,
+  updateTema,
   setFocoSemana,
   deleteTema,
   listItens,
