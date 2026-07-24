@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import {
@@ -16,9 +16,8 @@ import { Carregando, Erro, Vazio } from '../components/Estado';
 import { PrioridadePill, StatusPill } from '../components/Pills';
 import ItemDetailModal from '../components/ItemDetailModal';
 import CardRotina from '../components/RotinaCard';
-import type { Item } from '../api/types';
+import type { DashboardSemana, Item } from '../api/types';
 import { hojeLocalISO } from '../utils/data';
-import { aplicarOrdemSalva, lerOrdemSalva, salvarOrdem } from '../utils/ordemPriorizados';
 
 function ItemPriorizadoRow({
   item,
@@ -118,21 +117,53 @@ export default function Hoje() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['dashboard-semana'] }),
   });
 
-  // Sequência manual (arrastar e soltar) de "Priorizado para hoje" — salva no
-  // navegador por dia, não é um dado do Notion (ver utils/ordemPriorizados.ts).
-  const [ordemPriorizados, setOrdemPriorizados] = useState<string[]>(() => lerOrdemSalva(dataHoje));
-  useEffect(() => {
-    setOrdemPriorizados(lerOrdemSalva(dataHoje));
-  }, [dataHoje]);
-
   const sensoresPriorizados = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
 
   const { temasEmFoco = [], itensHoje = [] } = data ?? { temasEmFoco: [], itensHoje: [] };
 
-  const itensHojeOrdenados = useMemo(
-    () => aplicarOrdemSalva(itensHoje, ordemPriorizados),
-    [itensHoje, ordemPriorizados]
-  );
+  // Sequência manual (arrastar e soltar) de "Priorizado para hoje", salva no
+  // Notion (Item.ordemPriorizadoHoje + Item.dataOrdemPriorizado). Só usa a
+  // ordem salva se ela foi definida hoje — do contrário (dia diferente, ou
+  // nunca reordenado) o item entra no fim, na ordem em que chegou. Isso
+  // reproduz o "reseta a cada dia" sem precisar de um cron de limpeza: o
+  // valor antigo só deixa de ser usado, nunca precisa ser apagado.
+  const itensHojeOrdenados = useMemo(() => {
+    const semOrdem = Infinity;
+    return [...itensHoje].sort((a, b) => {
+      const va = a.dataOrdemPriorizado === dataHoje ? a.ordemPriorizadoHoje ?? semOrdem : semOrdem;
+      const vb = b.dataOrdemPriorizado === dataHoje ? b.ordemPriorizadoHoje ?? semOrdem : semOrdem;
+      return va - vb;
+    });
+  }, [itensHoje, dataHoje]);
+
+  const reordenarPriorizados = useMutation({
+    mutationFn: (idsNaNovaOrdem: string[]) =>
+      Promise.all(
+        idsNaNovaOrdem.map((id, indice) =>
+          api.atualizarItem(id, { ordemPriorizadoHoje: indice, dataOrdemPriorizado: dataHoje })
+        )
+      ),
+    onMutate: async (idsNaNovaOrdem) => {
+      await queryClient.cancelQueries({ queryKey: ['dashboard-semana'] });
+      const anterior = queryClient.getQueryData<DashboardSemana>(['dashboard-semana']);
+      if (anterior) {
+        const mapaItens = new Map(anterior.itensHoje.map((i) => [i.id, i]));
+        queryClient.setQueryData<DashboardSemana>(['dashboard-semana'], {
+          ...anterior,
+          itensHoje: idsNaNovaOrdem.map((id, indice) => ({
+            ...mapaItens.get(id)!,
+            ordemPriorizadoHoje: indice,
+            dataOrdemPriorizado: dataHoje,
+          })),
+        });
+      }
+      return { anterior };
+    },
+    onError: (_err, _vars, contexto) => {
+      if (contexto?.anterior) queryClient.setQueryData(['dashboard-semana'], contexto.anterior);
+    },
+    onSettled: () => queryClient.invalidateQueries({ queryKey: ['dashboard-semana'] }),
+  });
 
   function handleDragEndPriorizados(event: DragEndEvent) {
     const { active, over } = event;
@@ -141,9 +172,7 @@ export default function Hoje() {
     const indiceAtual = ids.indexOf(String(active.id));
     const indiceNovo = ids.indexOf(String(over.id));
     if (indiceAtual === -1 || indiceNovo === -1) return;
-    const novaOrdem = arrayMove(ids, indiceAtual, indiceNovo);
-    setOrdemPriorizados(novaOrdem);
-    salvarOrdem(dataHoje, novaOrdem);
+    reordenarPriorizados.mutate(arrayMove(ids, indiceAtual, indiceNovo));
   }
 
   if (isLoading) return <Carregando texto="Carregando o resumo de hoje..." />;

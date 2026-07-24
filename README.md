@@ -218,4 +218,10 @@ O cron do Vercel Hobby plan permite no máximo 1 execução por dia por rota —
   apontamentos dentro do período de recorrência atual da rotina.
 - O envio de e-mail está isolado em `backend/services/emailService.js` — nenhum outro arquivo
   do backend importa `resend` diretamente, no mesmo espírito do `notionService.js`.
+- A sequência manual (arrastar e soltar) da lista "Priorizado para hoje" na tela Hoje é salva
+  em dois campos na própria database Itens: **"Ordem Priorizado Hoje"** (número) e **"Data
+  Ordem Priorizado"** (data). A ordem só é aplicada se `Data Ordem Priorizado` for igual à
+  data local de hoje — assim ela "reseta" a cada dia sem precisar apagar nada: valores de dias
+  anteriores simplesmente deixam de ser considerados. Por ser um campo do Notion (não
+  `localStorage`), a ordem sincroniza entre dispositivos.
 - Não há testes automatizados nem ESLint/Prettier configurados em nenhum dos dois projetos.

@@ -33,6 +33,8 @@ export interface Item {
   urlAta: string | null;
   origem: Origem | null;
   criadoEm: string | null;
+  ordemPriorizadoHoje: number | null;
+  dataOrdemPriorizado: string | null;
 }
 
 export interface NovoItemPayload {
@@ -51,7 +53,10 @@ export interface NovoItemPayload {
   urlAta?: string;
 }
 
-export type AtualizarItemPayload = Partial<NovoItemPayload>;
+export type AtualizarItemPayload = Partial<NovoItemPayload> & {
+  ordemPriorizadoHoje?: number | null;
+  dataOrdemPriorizado?: string | null;
+};
 
 export interface NovoTemaPayload {
   nome: string;

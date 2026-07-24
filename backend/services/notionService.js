@@ -209,6 +209,8 @@ function mapItem(page) {
     urlAta: getUrl(p['URL da Ata']),
     origem: getSelect(p.Origem),
     criadoEm: getCreatedTime(p['Criado em']),
+    ordemPriorizadoHoje: getNumber(p['Ordem Priorizado Hoje']),
+    dataOrdemPriorizado: getDate(p['Data Ordem Priorizado']),
   };
 }
 
@@ -542,6 +544,16 @@ async function updateItem(itemId, dados) {
   }
   if (dados.urlAta !== undefined) {
     properties['URL da Ata'] = { url: dados.urlAta || null };
+  }
+  if (dados.ordemPriorizadoHoje !== undefined) {
+    properties['Ordem Priorizado Hoje'] = {
+      number: dados.ordemPriorizadoHoje === null ? null : Number(dados.ordemPriorizadoHoje),
+    };
+  }
+  if (dados.dataOrdemPriorizado !== undefined) {
+    properties['Data Ordem Priorizado'] = {
+      date: dados.dataOrdemPriorizado ? { start: dados.dataOrdemPriorizado } : null,
+    };
   }
 
   const page = await notion.pages.update({ page_id: itemId, properties });
