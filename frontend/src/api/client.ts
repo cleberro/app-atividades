@@ -19,6 +19,8 @@ import type {
   NovoApontamentoPayload,
   ResultadoApontamento,
   Destinatario,
+  ContatoWhatsapp,
+  NovoContatoWhatsappPayload,
 } from './types';
 
 // Em dev local, aponta para o backend na porta 4000 por padrão. Em produção
@@ -150,6 +152,15 @@ export const api = {
     request<Destinatario>(`/api/rotinas/destinatarios/${id}`, { method: 'PATCH', body: JSON.stringify(dados) }),
   excluirDestinatario: (id: string) =>
     request<void>(`/api/rotinas/destinatarios/${id}`, { method: 'DELETE' }),
+
+  // Contatos WhatsApp (aviso de itens com prazo vencido)
+  listarContatosWhatsapp: () => request<ContatoWhatsapp[]>('/api/whatsapp/contatos'),
+  criarContatoWhatsapp: (dados: NovoContatoWhatsappPayload) =>
+    request<ContatoWhatsapp>('/api/whatsapp/contatos', { method: 'POST', body: JSON.stringify(dados) }),
+  atualizarContatoWhatsapp: (id: string, dados: Partial<NovoContatoWhatsappPayload>) =>
+    request<ContatoWhatsapp>(`/api/whatsapp/contatos/${id}`, { method: 'PATCH', body: JSON.stringify(dados) }),
+  excluirContatoWhatsapp: (id: string) =>
+    request<void>(`/api/whatsapp/contatos/${id}`, { method: 'DELETE' }),
 };
 
 export { ApiError };

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Link } from 'react-router-dom';
 import { api } from '../api/client';
 import { PrioridadePill, StatusPill, TipoPill } from './Pills';
 import type { Item, Prioridade, StatusItem, TipoItem } from '../api/types';
@@ -19,6 +20,10 @@ interface ItemDetailModalProps {
 export default function ItemDetailModal({ item, onClose }: ItemDetailModalProps) {
   const queryClient = useQueryClient();
   const { data: temas } = useQuery({ queryKey: ['temas'], queryFn: api.listarTemas });
+  const { data: contatosWhatsapp } = useQuery({
+    queryKey: ['whatsapp-contatos'],
+    queryFn: api.listarContatosWhatsapp,
+  });
 
   const [titulo, setTitulo] = useState(item.titulo);
   const [temaId, setTemaId] = useState(item.temaIds[0] || '');
@@ -31,6 +36,7 @@ export default function ItemDetailModal({ item, onClose }: ItemDetailModalProps)
   const [priorizadoHoje, setPriorizadoHoje] = useState(item.priorizadoHoje);
   const [anotacoes, setAnotacoes] = useState(item.anotacoesDiarias || '');
   const [notaNova, setNotaNova] = useState('');
+  const [whatsappContatoIds, setWhatsappContatoIds] = useState<string[]>(item.whatsappContatoIds);
 
   // Reseta o formulário sempre que um item diferente é aberto no modal.
   useEffect(() => {
@@ -45,7 +51,14 @@ export default function ItemDetailModal({ item, onClose }: ItemDetailModalProps)
     setPriorizadoHoje(item.priorizadoHoje);
     setAnotacoes(item.anotacoesDiarias || '');
     setNotaNova('');
+    setWhatsappContatoIds(item.whatsappContatoIds);
   }, [item.id]);
+
+  function alternarContatoWhatsapp(contatoId: string) {
+    setWhatsappContatoIds((atual) =>
+      atual.includes(contatoId) ? atual.filter((id) => id !== contatoId) : [...atual, contatoId]
+    );
+  }
 
   useEffect(() => {
     function onEsc(e: KeyboardEvent) {
@@ -73,6 +86,7 @@ export default function ItemDetailModal({ item, onClose }: ItemDetailModalProps)
         status: (status || undefined) as StatusItem | undefined,
         prioridade: (prioridade || undefined) as Prioridade | undefined,
         prazo: prazo || undefined,
+        whatsappContatoIds,
       }),
     onSuccess: invalidarTudo,
   });
@@ -266,6 +280,48 @@ export default function ItemDetailModal({ item, onClose }: ItemDetailModalProps)
           {anotacoes && (
             <div className="mt-2 max-h-40 overflow-y-auto whitespace-pre-wrap rounded-lg bg-bg-elevated/50 p-3 text-xs text-text-muted">
               {anotacoes}
+            </div>
+          )}
+        </div>
+
+        <div className="mt-3">
+          <div className="mb-1 flex items-center justify-between">
+            <label className="block text-xs font-medium text-text-muted">
+              Notificar por WhatsApp quando vencer o prazo
+            </label>
+            <Link to="/contatos" className="text-xs text-accent-secondary hover:underline">
+              gerenciar contatos →
+            </Link>
+          </div>
+          {(contatosWhatsapp ?? []).length === 0 ? (
+            <p className="text-xs text-text-muted">
+              Nenhum contato cadastrado ainda —{' '}
+              <Link to="/contatos" className="text-accent-secondary hover:underline">
+                cadastre um
+              </Link>
+              .
+            </p>
+          ) : (
+            <div className="flex flex-wrap gap-2">
+              {(contatosWhatsapp ?? []).map((contato) => {
+                const selecionado = whatsappContatoIds.includes(contato.id);
+                return (
+                  <button
+                    type="button"
+                    key={contato.id}
+                    onClick={() => alternarContatoWhatsapp(contato.id)}
+                    aria-pressed={selecionado}
+                    className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
+                      selecionado
+                        ? 'bg-accent-primary text-white'
+                        : 'bg-bg-elevated text-text-muted hover:text-text-primary'
+                    } ${contato.ativo ? '' : 'opacity-50'}`}
+                  >
+                    {contato.nome}
+                    {!contato.ativo && ' (inativo)'}
+                  </button>
+                );
+              })}
             </div>
           )}
         </div>

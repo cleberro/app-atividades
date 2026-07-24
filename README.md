@@ -149,6 +149,11 @@ completamente — isso é uma limitação do navegador, não do código.
 | PATCH  | `/api/rotinas/destinatarios/:id`   | Ativa/desativa um destinatário                               |
 | DELETE | `/api/rotinas/destinatarios/:id`   | Remove um destinatário                                       |
 | GET    | `/api/rotinas/resumo-diario?data=` | Calcula e envia por e-mail o resumo das rotinas do dia (padrão: ontem, fuso America/Sao_Paulo) — chamada automaticamente pelo Vercel Cron |
+| GET    | `/api/whatsapp/contatos`           | Lista contatos WhatsApp cadastrados para aviso de itens vencidos |
+| POST   | `/api/whatsapp/contatos`           | Cadastra um contato (`nome`, `telefone`, `apiKeyCallMeBot`)  |
+| PATCH  | `/api/whatsapp/contatos/:id`       | Atualiza nome/telefone/apikey/ativo de um contato            |
+| DELETE | `/api/whatsapp/contatos/:id`       | Remove um contato                                             |
+| GET    | `/api/whatsapp/vencidos?data=`     | Envia por WhatsApp (CallMeBot) um aviso agrupado por contato dos itens com prazo vencido (padrão: hoje, fuso America/Sao_Paulo) — chamada automaticamente pelo Vercel Cron |
 | GET    | `/api/health`                      | Healthcheck (mostra se `NOTION_API_KEY` está configurado) |
 
 Todas as rotas GET usam um cache em memória de 60s (arquivo `backend/cache.js`), invalidado
@@ -168,6 +173,7 @@ Lixeira do workspace, de onde pode ser restaurada) — não existe exclusão per
 | `/temas/:id`  | **Detalhe do tema** — itens do tema + formulário de novo item          |
 | `/habitos`    | **Hábitos** — cadastro/edição/exclusão de hábitos, histórico de check-ins |
 | `/rotinas`    | **Rotinas** — cadastro/edição/exclusão de rotinas, apontamento de tempo com barra de progresso, destinatários do resumo diário |
+| `/contatos`   | **Contatos WhatsApp** — cadastro de quem recebe avisos de itens vencidos, com passo a passo do CallMeBot |
 | `/novo`       | **Novo item** — formulário completo de criação                         |
 
 A tela **Hoje** também mostra os hábitos previstos para o dia (calculado a partir de "Dias da
@@ -194,6 +200,24 @@ em `/rotinas`. Variáveis necessárias no `.env` do backend (ver `.env.example`)
   `Authorization: Bearer <CRON_SECRET>` automaticamente nas chamadas agendadas.
 
 O cron do Vercel Hobby plan permite no máximo 1 execução por dia por rota — compatível com este uso.
+
+### Aviso de itens vencidos por WhatsApp
+
+Todo item pode ser vinculado a um ou mais **Contatos WhatsApp** (cadastrados em `/contatos`) em
+"Notificar por WhatsApp quando vencer o prazo", no popup de detalhe do item. Um Vercel Cron
+(`0 11 * * *` = 08:00 no fuso America/Sao_Paulo) chama `GET /api/whatsapp/vencidos`, que busca
+todo item com Prazo anterior a hoje e Status diferente de "Concluída"/"Não se aplica", agrupa por
+contato vinculado e envia **uma mensagem por pessoa** (não uma por item) via
+[CallMeBot](https://www.callmebot.com/blog/free-api-whatsapp-messages/), com a lista de itens
+vencidos daquela pessoa. Os emoji de status/prioridade na mensagem reproduzem as mesmas cores dos
+Pills da interface (ver `STATUS_EMOJI`/`PRIORIDADE_EMOJI` em `backend/services/whatsappService.js`).
+
+O CallMeBot é gratuito e não exige conta/token do app — cada contato tem sua própria apikey,
+obtida enviando uma mensagem de opt-in ao número do bot uma única vez (passo a passo na tela
+`/contatos`). Por não ser uma API oficial da Meta, o CallMeBot pode ficar instável ou exigir
+recadastro da apikey eventualmente; ele também é inconsistente quanto ao status HTTP retornado
+(200/203/503 tanto em sucesso quanto erro) — a checagem de sucesso real é textual
+(`enviarWhatsapp()` procura "Message queued" no corpo da resposta).
 
 ## 8. Notas e decisões de implementação
 
@@ -224,4 +248,9 @@ O cron do Vercel Hobby plan permite no máximo 1 execução por dia por rota —
   data local de hoje — assim ela "reseta" a cada dia sem precisar apagar nada: valores de dias
   anteriores simplesmente deixam de ser considerados. Por ser um campo do Notion (não
   `localStorage`), a ordem sincroniza entre dispositivos.
+- A funcionalidade de aviso de itens vencidos usa uma database própria **"Contatos WhatsApp"**
+  (Nome, Telefone, ApiKey CallMeBot, Ativo) e uma propriedade de relação **"Notificar WhatsApp"**
+  adicionada à database Itens já existente (permite vários contatos por item). O envio está
+  isolado em `backend/services/whatsappService.js`, no mesmo espírito do `notionService.js` e do
+  `emailService.js`.
 - Não há testes automatizados nem ESLint/Prettier configurados em nenhum dos dois projetos.

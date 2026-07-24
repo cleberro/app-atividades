@@ -9,6 +9,7 @@ const itensRouter = require('./routes/itens');
 const dashboardRouter = require('./routes/dashboard');
 const habitosRouter = require('./routes/habitos');
 const rotinasRouter = require('./routes/rotinas');
+const whatsappRouter = require('./routes/whatsapp');
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -44,6 +45,7 @@ app.use('/api/itens', itensRouter);
 app.use('/api/dashboard', dashboardRouter);
 app.use('/api/habitos', habitosRouter);
 app.use('/api/rotinas', rotinasRouter);
+app.use('/api/whatsapp', whatsappRouter);
 
 // Handler de erro central: traduz erros da API do Notion (ex.: 401 sem
 // token valido) em respostas JSON legiveis para o frontend.

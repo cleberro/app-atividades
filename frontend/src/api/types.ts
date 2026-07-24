@@ -35,6 +35,7 @@ export interface Item {
   criadoEm: string | null;
   ordemPriorizadoHoje: number | null;
   dataOrdemPriorizado: string | null;
+  whatsappContatoIds: string[];
 }
 
 export interface NovoItemPayload {
@@ -56,6 +57,7 @@ export interface NovoItemPayload {
 export type AtualizarItemPayload = Partial<NovoItemPayload> & {
   ordemPriorizadoHoje?: number | null;
   dataOrdemPriorizado?: string | null;
+  whatsappContatoIds?: string[];
 };
 
 export interface NovoTemaPayload {
@@ -173,6 +175,21 @@ export interface Destinatario {
   id: string;
   email: string;
   ativo: boolean;
+}
+
+export interface ContatoWhatsapp {
+  id: string;
+  nome: string;
+  telefone: string;
+  apiKeyCallMeBot: string;
+  ativo: boolean;
+}
+
+export interface NovoContatoWhatsappPayload {
+  nome: string;
+  telefone: string;
+  apiKeyCallMeBot: string;
+  ativo?: boolean;
 }
 
 export const STATUS_ITEM_OPCOES: StatusItem[] = [

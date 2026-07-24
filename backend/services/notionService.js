@@ -30,6 +30,7 @@ const REGISTROS_HABITOS_DB_ID = '39fa1a73-667d-810f-a8ff-fbb79ca41ee6';
 const ROTINAS_DB_ID = '3a1a1a73-667d-81aa-90e3-d7e3ffad55f2';
 const APONTAMENTOS_ROTINA_DB_ID = '3a1a1a73-667d-813c-92a6-dc60b486cb66';
 const DESTINATARIOS_DB_ID = '3a1a1a73-667d-81a9-8107-f914307562f7';
+const CONTATOS_WHATSAPP_DB_ID = '3a7a1a73-667d-81da-bb11-e596ee98b22d';
 
 const notion = new Client({ auth: process.env.NOTION_API_KEY });
 
@@ -211,6 +212,7 @@ function mapItem(page) {
     criadoEm: getCreatedTime(p['Criado em']),
     ordemPriorizadoHoje: getNumber(p['Ordem Priorizado Hoje']),
     dataOrdemPriorizado: getDate(p['Data Ordem Priorizado']),
+    whatsappContatoIds: getRelationIds(p['Notificar WhatsApp']),
   };
 }
 
@@ -262,6 +264,17 @@ function mapDestinatario(page) {
   return {
     id: page.id,
     email: getTitle(p['Email']),
+    ativo: getCheckbox(p['Ativo']),
+  };
+}
+
+function mapContatoWhatsapp(page) {
+  const p = page.properties;
+  return {
+    id: page.id,
+    nome: getTitle(p['Nome']),
+    telefone: getRichText(p['Telefone']),
+    apiKeyCallMeBot: getRichText(p['ApiKey CallMeBot']),
     ativo: getCheckbox(p['Ativo']),
   };
 }
@@ -553,6 +566,11 @@ async function updateItem(itemId, dados) {
   if (dados.dataOrdemPriorizado !== undefined) {
     properties['Data Ordem Priorizado'] = {
       date: dados.dataOrdemPriorizado ? { start: dados.dataOrdemPriorizado } : null,
+    };
+  }
+  if (dados.whatsappContatoIds !== undefined) {
+    properties['Notificar WhatsApp'] = {
+      relation: (dados.whatsappContatoIds || []).map((id) => ({ id })),
     };
   }
 
@@ -1044,6 +1062,110 @@ async function getResumoDiario(dataAlvo) {
   return { data: dataAlvo, rotinas: rotinasDoResumo };
 }
 
+// ---------------------------------------------------------------------
+// Contatos WhatsApp / avisos de itens com prazo vencido
+// ---------------------------------------------------------------------
+
+async function listContatosWhatsapp() {
+  const response = await notion.databases.query({ database_id: CONTATOS_WHATSAPP_DB_ID, page_size: 100 });
+  return response.results.map(mapContatoWhatsapp);
+}
+
+async function createContatoWhatsapp(dados) {
+  const page = await notion.pages.create({
+    parent: { database_id: CONTATOS_WHATSAPP_DB_ID },
+    properties: {
+      Nome: { title: [{ text: { content: dados.nome || 'Sem nome' } }] },
+      Telefone: { rich_text: buildRichText(dados.telefone || '') },
+      'ApiKey CallMeBot': { rich_text: buildRichText(dados.apiKeyCallMeBot || '') },
+      Ativo: { checkbox: dados.ativo === undefined ? true : !!dados.ativo },
+    },
+  });
+  return mapContatoWhatsapp(page);
+}
+
+async function updateContatoWhatsapp(contatoId, dados) {
+  const properties = {};
+  if (dados.nome !== undefined) {
+    properties.Nome = { title: [{ text: { content: dados.nome } }] };
+  }
+  if (dados.telefone !== undefined) {
+    properties.Telefone = { rich_text: buildRichText(dados.telefone) };
+  }
+  if (dados.apiKeyCallMeBot !== undefined) {
+    properties['ApiKey CallMeBot'] = { rich_text: buildRichText(dados.apiKeyCallMeBot) };
+  }
+  if (dados.ativo !== undefined) {
+    properties.Ativo = { checkbox: !!dados.ativo };
+  }
+  const page = await notion.pages.update({ page_id: contatoId, properties });
+  return mapContatoWhatsapp(page);
+}
+
+async function deleteContatoWhatsapp(contatoId) {
+  await notion.pages.update({ page_id: contatoId, archived: true });
+}
+
+/**
+ * Itens com Prazo anterior a "dataReferencia" ("YYYY-MM-DD") e que ainda
+ * não estão concluídos nem marcados "Não se aplica".
+ */
+async function getItensVencidos(dataReferencia) {
+  const results = [];
+  let cursor;
+  do {
+    const response = await notion.databases.query({
+      database_id: ITENS_DB_ID,
+      filter: {
+        and: [
+          { property: 'Prazo', date: { before: dataReferencia } },
+          { property: 'Status', select: { does_not_equal: 'Concluída' } },
+          { property: 'Status', select: { does_not_equal: 'Não se aplica' } },
+        ],
+      },
+      page_size: 100,
+      start_cursor: cursor,
+    });
+    results.push(...response.results);
+    cursor = response.has_more ? response.next_cursor : undefined;
+  } while (cursor);
+  return results.map(mapItem);
+}
+
+/**
+ * Agrupa os itens vencidos por contato WhatsApp ativo vinculado a eles —
+ * um aviso por pessoa (não um aviso por item), cada um com a lista de
+ * itens que dizem respeito a ela.
+ */
+async function getVencidosPorContato(dataReferencia) {
+  const [itensVencidos, contatos, temas] = await Promise.all([
+    getItensVencidos(dataReferencia),
+    listContatosWhatsapp(),
+    listTemas(),
+  ]);
+
+  const nomeTemaPorId = new Map(temas.map((t) => [t.id, t.nome]));
+  const contatosAtivosPorId = new Map(contatos.filter((c) => c.ativo).map((c) => [c.id, c]));
+
+  const itensPorContato = new Map();
+  for (const item of itensVencidos) {
+    const itemComTema = {
+      ...item,
+      temaNome: item.temaIds[0] ? nomeTemaPorId.get(item.temaIds[0]) || null : null,
+    };
+    for (const contatoId of item.whatsappContatoIds) {
+      if (!contatosAtivosPorId.has(contatoId)) continue;
+      if (!itensPorContato.has(contatoId)) itensPorContato.set(contatoId, []);
+      itensPorContato.get(contatoId).push(itemComTema);
+    }
+  }
+
+  return Array.from(itensPorContato.entries()).map(([contatoId, itens]) => ({
+    contato: contatosAtivosPorId.get(contatoId),
+    itens,
+  }));
+}
+
 module.exports = {
   TEMAS_DB_ID,
   ITENS_DB_ID,
@@ -1052,6 +1174,7 @@ module.exports = {
   ROTINAS_DB_ID,
   APONTAMENTOS_ROTINA_DB_ID,
   DESTINATARIOS_DB_ID,
+  CONTATOS_WHATSAPP_DB_ID,
   listTemas,
   createTema,
   updateTema,
@@ -1084,4 +1207,10 @@ module.exports = {
   deleteDestinatario,
   getResumoDiario,
   ontemSaoPaulo,
+  hojeSaoPaulo,
+  listContatosWhatsapp,
+  createContatoWhatsapp,
+  updateContatoWhatsapp,
+  deleteContatoWhatsapp,
+  getVencidosPorContato,
 };

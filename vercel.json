@@ -7,6 +7,7 @@
     { "source": "/(.*)", "destination": "/index.html" }
   ],
   "crons": [
-    { "path": "/api/rotinas/resumo-diario", "schedule": "0 10 * * *" }
+    { "path": "/api/rotinas/resumo-diario", "schedule": "0 10 * * *" },
+    { "path": "/api/whatsapp/vencidos", "schedule": "0 11 * * *" }
   ]
 }
