@@ -62,6 +62,21 @@ export default function TemaDetail() {
     }
   }
 
+  const enviarWhatsapp = useMutation({
+    mutationFn: () => api.enviarItensWhatsappPorTema(id!),
+  });
+
+  function confirmarEnvioWhatsapp() {
+    if (!tema) return;
+    if (
+      window.confirm(
+        `Enviar por WhatsApp os itens do tema "${tema.nome}" (com contato cadastrado) para os respectivos contatos, independente do prazo?`
+      )
+    ) {
+      enviarWhatsapp.mutate();
+    }
+  }
+
   const responsaveisDisponiveis = useMemo(() => {
     const set = new Set<string>();
     (itensQuery.data ?? []).forEach((i) => i.responsavel && set.add(i.responsavel));
@@ -112,6 +127,13 @@ export default function TemaDetail() {
               Mapa mental ↗
             </a>
             <button
+              onClick={confirmarEnvioWhatsapp}
+              disabled={enviarWhatsapp.isPending}
+              className="rounded-lg bg-bg-elevated px-3 py-1.5 text-sm font-medium text-text-muted hover:text-text-primary disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {enviarWhatsapp.isPending ? 'Enviando...' : 'Enviar por WhatsApp'}
+            </button>
+            <button
               onClick={() => setEditandoTema((v) => !v)}
               className="rounded-lg bg-bg-elevated px-3 py-1.5 text-sm font-medium text-text-muted hover:text-text-primary"
             >
@@ -128,6 +150,32 @@ export default function TemaDetail() {
         </div>
         {excluirTema.isError && (
           <p className="text-sm text-status-bloqueada">{(excluirTema.error as Error).message}</p>
+        )}
+        {enviarWhatsapp.isError && (
+          <p className="text-sm text-status-bloqueada">{(enviarWhatsapp.error as Error).message}</p>
+        )}
+        {enviarWhatsapp.isSuccess && (
+          <div className="rounded-lg bg-bg-elevated p-3 text-xs text-text-muted">
+            {enviarWhatsapp.data.contatosNotificados === 0 ? (
+              <p>Nenhum item deste tema tem contato de WhatsApp vinculado.</p>
+            ) : (
+              <ul className="flex flex-col gap-1">
+                {enviarWhatsapp.data.envios.map((envio) => (
+                  <li key={envio.contatoId}>
+                    {envio.enviado ? (
+                      <span className="text-status-concluida">
+                        ✓ {envio.nome} — {envio.itens} item(ns) enviado(s)
+                      </span>
+                    ) : (
+                      <span className="text-status-bloqueada">
+                        ✕ {envio.nome} — {envio.motivo}
+                      </span>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
         )}
         {editandoTema && (
           <TemaForm temaEditando={tema} compacto onSucesso={() => setEditandoTema(false)} />

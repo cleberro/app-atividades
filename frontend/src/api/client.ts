@@ -21,6 +21,7 @@ import type {
   Destinatario,
   ContatoWhatsapp,
   NovoContatoWhatsappPayload,
+  ResultadoEnvioWhatsapp,
 } from './types';
 
 // Em dev local, aponta para o backend na porta 4000 por padrão. Em produção
@@ -161,6 +162,8 @@ export const api = {
     request<ContatoWhatsapp>(`/api/whatsapp/contatos/${id}`, { method: 'PATCH', body: JSON.stringify(dados) }),
   excluirContatoWhatsapp: (id: string) =>
     request<void>(`/api/whatsapp/contatos/${id}`, { method: 'DELETE' }),
+  enviarItensWhatsappPorTema: (temaId: string) =>
+    request<ResultadoEnvioWhatsapp>(`/api/whatsapp/temas/${temaId}/enviar`, { method: 'POST' }),
 };
 
 export { ApiError };

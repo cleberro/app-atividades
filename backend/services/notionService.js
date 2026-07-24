@@ -1147,8 +1147,13 @@ async function getVencidosPorContato(dataReferencia) {
   const nomeTemaPorId = new Map(temas.map((t) => [t.id, t.nome]));
   const contatosAtivosPorId = new Map(contatos.filter((c) => c.ativo).map((c) => [c.id, c]));
 
+  return agruparItensPorContato(itensVencidos, contatosAtivosPorId, nomeTemaPorId);
+}
+
+/** Agrupa itens por contato WhatsApp ativo vinculado a eles — usado tanto pelo aviso de vencidos quanto pelo envio manual por tema. */
+function agruparItensPorContato(itens, contatosAtivosPorId, nomeTemaPorId) {
   const itensPorContato = new Map();
-  for (const item of itensVencidos) {
+  for (const item of itens) {
     const itemComTema = {
       ...item,
       temaNome: item.temaIds[0] ? nomeTemaPorId.get(item.temaIds[0]) || null : null,
@@ -1160,10 +1165,32 @@ async function getVencidosPorContato(dataReferencia) {
     }
   }
 
-  return Array.from(itensPorContato.entries()).map(([contatoId, itens]) => ({
+  return Array.from(itensPorContato.entries()).map(([contatoId, itensDoContato]) => ({
     contato: contatosAtivosPorId.get(contatoId),
-    itens,
+    itens: itensDoContato,
   }));
+}
+
+/**
+ * Itens de um tema que têm ao menos um contato WhatsApp vinculado,
+ * agrupados por contato — usado no envio manual "por tema" (independente
+ * de prazo vencido).
+ */
+async function getItensPorTemaComContato(temaId) {
+  const [itensDoTema, contatos, temas] = await Promise.all([
+    listItens({ tema: temaId }),
+    listContatosWhatsapp(),
+    listTemas(),
+  ]);
+
+  const nomeTemaPorId = new Map(temas.map((t) => [t.id, t.nome]));
+  const contatosAtivosPorId = new Map(contatos.filter((c) => c.ativo).map((c) => [c.id, c]));
+  const itensComContato = itensDoTema.filter((i) => i.whatsappContatoIds.length > 0);
+
+  return {
+    temaNome: nomeTemaPorId.get(temaId) || null,
+    grupos: agruparItensPorContato(itensComContato, contatosAtivosPorId, nomeTemaPorId),
+  };
 }
 
 module.exports = {
@@ -1213,4 +1240,5 @@ module.exports = {
   updateContatoWhatsapp,
   deleteContatoWhatsapp,
   getVencidosPorContato,
+  getItensPorTemaComContato,
 };

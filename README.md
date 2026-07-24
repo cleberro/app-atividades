@@ -154,6 +154,7 @@ completamente — isso é uma limitação do navegador, não do código.
 | PATCH  | `/api/whatsapp/contatos/:id`       | Atualiza nome/telefone/apikey/ativo de um contato            |
 | DELETE | `/api/whatsapp/contatos/:id`       | Remove um contato                                             |
 | GET    | `/api/whatsapp/vencidos?data=`     | Envia por WhatsApp (CallMeBot) um aviso agrupado por contato dos itens com prazo vencido (padrão: hoje, fuso America/Sao_Paulo) — chamada automaticamente pelo Vercel Cron |
+| POST   | `/api/whatsapp/temas/:temaId/enviar` | Envia manualmente, por WhatsApp, os itens do tema com contato vinculado para os respectivos contatos — independente de prazo vencido |
 | GET    | `/api/health`                      | Healthcheck (mostra se `NOTION_API_KEY` está configurado) |
 
 Todas as rotas GET usam um cache em memória de 60s (arquivo `backend/cache.js`), invalidado
@@ -218,6 +219,13 @@ obtida enviando uma mensagem de opt-in ao número do bot uma única vez (passo a
 recadastro da apikey eventualmente; ele também é inconsistente quanto ao status HTTP retornado
 (200/203/503 tanto em sucesso quanto erro) — a checagem de sucesso real é textual
 (`enviarWhatsapp()` procura "Message queued" no corpo da resposta).
+
+Além do envio automático diário, a tela de Detalhe do Tema (`/temas/:id`) tem o botão **"Enviar
+por WhatsApp"**, que dispara `POST /api/whatsapp/temas/:temaId/enviar`: envia os itens daquele
+tema (que tiverem contato vinculado) para os respectivos contatos, **independente do prazo estar
+vencido** — útil para pedir uma atualização de status a qualquer momento, não só quando algo
+atrasa. A mensagem usa o mesmo formato de `/vencidos`, mas só menciona "venceu há N dia(s)" para
+itens de fato vencidos (itens sem prazo ou com prazo futuro aparecem sem essa anotação).
 
 ## 8. Notas e decisões de implementação
 

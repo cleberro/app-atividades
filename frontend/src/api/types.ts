@@ -192,6 +192,21 @@ export interface NovoContatoWhatsappPayload {
   ativo?: boolean;
 }
 
+export interface EnvioWhatsappResultado {
+  contatoId: string;
+  nome: string;
+  enviado: boolean;
+  itens?: number;
+  motivo?: string;
+}
+
+export interface ResultadoEnvioWhatsapp {
+  tema?: string | null;
+  data?: string;
+  contatosNotificados: number;
+  envios: EnvioWhatsappResultado[];
+}
+
 export const STATUS_ITEM_OPCOES: StatusItem[] = [
   'Pendente',
   'Em Andamento',

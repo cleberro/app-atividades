@@ -43,33 +43,40 @@ function formatarDataBr(dataISO) {
   return `${dia}/${mes}/${ano}`;
 }
 
-/** Dias corridos entre "prazo" e "dataReferencia" (ambos "YYYY-MM-DD"), em aritmética UTC. */
+/**
+ * Dias corridos entre "prazo" e "dataReferencia" (ambos "YYYY-MM-DD"), em
+ * aritmética UTC. Positivo = prazo no passado (vencido); negativo = prazo
+ * no futuro; não força um mínimo — quem decide se "está vencido" é quem
+ * chama, comparando o resultado com zero (ver montarMensagemItens).
+ */
 function diasDeAtraso(prazo, dataReferencia) {
   const [pa, pm, pd] = prazo.split('-').map(Number);
   const [ra, rm, rd] = dataReferencia.split('-').map(Number);
   const msPorDia = 24 * 60 * 60 * 1000;
   const diff = Date.UTC(ra, rm - 1, rd) - Date.UTC(pa, pm - 1, pd);
-  return Math.max(1, Math.round(diff / msPorDia));
+  return Math.round(diff / msPorDia);
 }
 
 /**
- * Monta a mensagem de aviso de itens vencidos para um contato, no mesmo
+ * Monta uma mensagem com a lista de itens para um contato, no mesmo
  * "design system" do app: os emoji de status/prioridade reproduzem as
  * cores usadas nos Pills da interface, e o texto usa negrito/itálico do
- * WhatsApp para hierarquia visual equivalente à dos cards.
+ * WhatsApp para hierarquia visual equivalente à dos cards. "cabecalho" é
+ * a primeira linha (varia conforme o motivo do envio — vencidos ou envio
+ * manual por tema); a anotação "venceu há N dia(s)" só aparece quando o
+ * item realmente já passou de "dataReferencia".
  */
-function montarMensagemVencidos(contato, itens, dataReferencia) {
+function montarMensagemItens(contato, itens, dataReferencia, cabecalho) {
   const linhas = [];
-  linhas.push(`🔔 *Itens com prazo vencido — Gestão de Temas de TI*`);
+  linhas.push(cabecalho);
   linhas.push('');
-  linhas.push(
-    `Olá, ${limparMarkdown(contato.nome)}! Você tem *${itens.length}* item(ns) com prazo vencido:`
-  );
+  linhas.push(`Olá, ${limparMarkdown(contato.nome)}! Segue a lista de *${itens.length}* item(ns):`);
 
   for (const item of itens) {
     const statusEmoji = STATUS_EMOJI[item.status] || '⚪';
     const prioridadeEmoji = item.prioridade ? PRIORIDADE_EMOJI[item.prioridade] || '⚪' : null;
     const atraso = item.prazo ? diasDeAtraso(item.prazo, dataReferencia) : null;
+    const estaVencido = atraso !== null && atraso > 0;
 
     linhas.push('');
     linhas.push('▬▬▬▬▬▬▬▬▬▬');
@@ -77,7 +84,7 @@ function montarMensagemVencidos(contato, itens, dataReferencia) {
     if (item.temaNome) linhas.push(`📁 Tema: ${limparMarkdown(item.temaNome)}`);
     linhas.push(`👤 Responsável: ${item.responsavel ? limparMarkdown(item.responsavel) : '—'}`);
     linhas.push(
-      `📅 Prazo: ${formatarDataBr(item.prazo)}${atraso ? ` _(venceu há ${atraso} dia(s))_` : ''}`
+      `📅 Prazo: ${formatarDataBr(item.prazo)}${estaVencido ? ` _(venceu há ${atraso} dia(s))_` : ''}`
     );
     if (prioridadeEmoji) linhas.push(`${prioridadeEmoji} Prioridade: ${item.prioridade}`);
     linhas.push(`📊 Status: ${statusEmoji} ${item.status}`);
@@ -113,13 +120,14 @@ async function enviarWhatsapp(telefone, apiKey, texto) {
 }
 
 /**
- * Envia o aviso de itens vencidos para cada contato do grupo, em série
- * (com um pequeno intervalo entre envios — o CallMeBot é um serviço
- * gratuito com limite de taxa por número). Nunca lança: cada contato tem
- * seu próprio resultado (sucesso ou erro) no array retornado, para um
- * envio com falha não travar os demais.
+ * Envia, para cada contato do grupo, uma mensagem com os itens dele (o
+ * texto de "cabecalho" muda conforme o motivo do envio). Em série, com um
+ * pequeno intervalo entre envios — o CallMeBot é um serviço gratuito com
+ * limite de taxa por número. Nunca lança: cada contato tem seu próprio
+ * resultado (sucesso ou erro) no array retornado, para um envio com falha
+ * não travar os demais.
  */
-async function enviarAvisosVencidos(gruposPorContato, dataReferencia) {
+async function enviarAvisos(gruposPorContato, dataReferencia, cabecalho) {
   const resultados = [];
   for (const { contato, itens } of gruposPorContato) {
     try {
@@ -132,7 +140,7 @@ async function enviarAvisosVencidos(gruposPorContato, dataReferencia) {
         });
         continue;
       }
-      const mensagem = montarMensagemVencidos(contato, itens, dataReferencia);
+      const mensagem = montarMensagemItens(contato, itens, dataReferencia, cabecalho);
       await enviarWhatsapp(contato.telefone, contato.apiKeyCallMeBot, mensagem);
       resultados.push({ contatoId: contato.id, nome: contato.nome, enviado: true, itens: itens.length });
     } catch (err) {
@@ -149,4 +157,4 @@ async function enviarAvisosVencidos(gruposPorContato, dataReferencia) {
   return resultados;
 }
 
-module.exports = { montarMensagemVencidos, enviarWhatsapp, enviarAvisosVencidos };
+module.exports = { montarMensagemItens, enviarWhatsapp, enviarAvisos };

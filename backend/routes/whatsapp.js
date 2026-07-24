@@ -90,13 +90,43 @@ router.get('/vencidos', async (req, res, next) => {
       req.query.data && DATA_REGEX.test(req.query.data) ? req.query.data : notionService.hojeSaoPaulo();
 
     const gruposPorContato = await notionService.getVencidosPorContato(dataReferencia);
-    const envios = await whatsappService.enviarAvisosVencidos(gruposPorContato, dataReferencia);
+    const envios = await whatsappService.enviarAvisos(
+      gruposPorContato,
+      dataReferencia,
+      '🔔 *Itens com prazo vencido — Gestão de Temas de TI*'
+    );
 
     res.json({
       data: dataReferencia,
       contatosNotificados: gruposPorContato.length,
       envios,
     });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ---------------------------------------------------------------------
+// Envio manual por tema (independente de prazo vencido)
+// ---------------------------------------------------------------------
+
+// POST /api/whatsapp/temas/:temaId/enviar - envia, para os respectivos
+// contatos vinculados, os itens do tema que tiverem algum contato
+// cadastrado — não filtra por prazo vencido, ao contrário de /vencidos.
+router.post('/temas/:temaId/enviar', async (req, res, next) => {
+  try {
+    const { temaId } = req.params;
+    const { temaNome, grupos } = await notionService.getItensPorTemaComContato(temaId);
+
+    if (grupos.length === 0) {
+      return res.json({ tema: temaNome, contatosNotificados: 0, envios: [] });
+    }
+
+    const dataReferencia = notionService.hojeSaoPaulo();
+    const cabecalho = `📋 *Itens do tema "${temaNome || 'Sem nome'}" — Gestão de Temas de TI*`;
+    const envios = await whatsappService.enviarAvisos(grupos, dataReferencia, cabecalho);
+
+    res.json({ tema: temaNome, contatosNotificados: grupos.length, envios });
   } catch (err) {
     next(err);
   }
