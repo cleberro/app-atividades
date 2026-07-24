@@ -1,6 +1,16 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
+import {
+  DndContext,
+  PointerSensor,
+  closestCenter,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core';
+import { SortableContext, arrayMove, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import { api } from '../api/client';
 import { Carregando, Erro, Vazio } from '../components/Estado';
 import { PrioridadePill, StatusPill } from '../components/Pills';
@@ -8,6 +18,63 @@ import ItemDetailModal from '../components/ItemDetailModal';
 import CardRotina from '../components/RotinaCard';
 import type { Item } from '../api/types';
 import { hojeLocalISO } from '../utils/data';
+import { aplicarOrdemSalva, lerOrdemSalva, salvarOrdem } from '../utils/ordemPriorizados';
+
+function ItemPriorizadoRow({
+  item,
+  onAbrir,
+  onTogglePriorizado,
+}: {
+  item: Item;
+  onAbrir: () => void;
+  onTogglePriorizado: (valor: boolean) => void;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: item.id,
+  });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  return (
+    <li
+      ref={setNodeRef}
+      style={style}
+      onClick={onAbrir}
+      className="card card-hover flex cursor-pointer items-center justify-between gap-3 p-3"
+    >
+      <div className="flex min-w-0 items-center gap-3">
+        <span
+          {...attributes}
+          {...listeners}
+          onClick={(e) => e.stopPropagation()}
+          aria-label="Arrastar para reordenar"
+          className="shrink-0 cursor-grab touch-none px-1 text-text-muted active:cursor-grabbing"
+        >
+          ⠿
+        </span>
+        <input
+          type="checkbox"
+          checked={item.priorizadoHoje}
+          onClick={(e) => e.stopPropagation()}
+          onChange={(e) => onTogglePriorizado(e.target.checked)}
+          className="h-4 w-4 accent-accent-primary"
+        />
+        <div className="min-w-0">
+          <p className="truncate text-sm font-medium">{item.titulo}</p>
+          <p className="truncate text-xs text-text-muted">{item.responsavel || 'Sem responsável'}</p>
+        </div>
+      </div>
+      <div className="flex shrink-0 items-center gap-2">
+        <PrioridadePill prioridade={item.prioridade} />
+        <StatusPill status={item.status} />
+      </div>
+    </li>
+  );
+}
 
 export default function Hoje() {
   const queryClient = useQueryClient();
@@ -51,10 +118,36 @@ export default function Hoje() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['dashboard-semana'] }),
   });
 
-  if (isLoading) return <Carregando texto="Carregando o resumo de hoje..." />;
-  if (isError) return <Erro mensagem={(error as Error).message} />;
+  // Sequência manual (arrastar e soltar) de "Priorizado para hoje" — salva no
+  // navegador por dia, não é um dado do Notion (ver utils/ordemPriorizados.ts).
+  const [ordemPriorizados, setOrdemPriorizados] = useState<string[]>(() => lerOrdemSalva(dataHoje));
+  useEffect(() => {
+    setOrdemPriorizados(lerOrdemSalva(dataHoje));
+  }, [dataHoje]);
+
+  const sensoresPriorizados = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
 
   const { temasEmFoco = [], itensHoje = [] } = data ?? { temasEmFoco: [], itensHoje: [] };
+
+  const itensHojeOrdenados = useMemo(
+    () => aplicarOrdemSalva(itensHoje, ordemPriorizados),
+    [itensHoje, ordemPriorizados]
+  );
+
+  function handleDragEndPriorizados(event: DragEndEvent) {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const ids = itensHojeOrdenados.map((i) => i.id);
+    const indiceAtual = ids.indexOf(String(active.id));
+    const indiceNovo = ids.indexOf(String(over.id));
+    if (indiceAtual === -1 || indiceNovo === -1) return;
+    const novaOrdem = arrayMove(ids, indiceAtual, indiceNovo);
+    setOrdemPriorizados(novaOrdem);
+    salvarOrdem(dataHoje, novaOrdem);
+  }
+
+  if (isLoading) return <Carregando texto="Carregando o resumo de hoje..." />;
+  if (isError) return <Erro mensagem={(error as Error).message} />;
 
   return (
     <div className="flex flex-col gap-8">
@@ -97,77 +190,6 @@ export default function Hoje() {
           <p className="mt-2 text-xs text-status-bloqueada">
             {(criarMutation.error as Error).message}
           </p>
-        )}
-      </section>
-
-      <section className="rounded-2xl border border-white/10 bg-bg-surface/30 p-4 sm:p-5">
-        <div className="mb-3 flex items-center justify-between">
-          <h2 className="text-lg font-semibold">Temas em foco esta semana</h2>
-          <Link to="/temas" className="text-sm text-accent-secondary hover:underline">
-            ver todos os temas →
-          </Link>
-        </div>
-        {temasEmFoco.length === 0 ? (
-          <Vazio texto="Nenhum tema marcado como foco da semana ainda. Vá em Temas e ative o toggle 'Focar esta semana'." />
-        ) : (
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {temasEmFoco.map((tema) => (
-              <Link
-                key={tema.id}
-                to={`/temas/${tema.id}`}
-                className="card card-hover flex flex-col gap-2 p-4"
-              >
-                <div className="flex items-center justify-between">
-                  <span className="font-semibold">{tema.nome}</span>
-                  <PrioridadePill prioridade={tema.prioridade} />
-                </div>
-                <p className="line-clamp-2 text-xs text-text-muted">{tema.descricao}</p>
-                <div className="mt-1 flex items-center justify-between text-xs">
-                  <span className="text-text-muted">{tema.categoria}</span>
-                  <span className="pill bg-status-pendente/20 text-status-pendente">
-                    {tema.itensPendentes} pendente(s)
-                  </span>
-                </div>
-              </Link>
-            ))}
-          </div>
-        )}
-      </section>
-
-      <section className="rounded-2xl border border-white/10 bg-bg-surface/30 p-4 sm:p-5">
-        <h2 className="mb-3 text-lg font-semibold">Priorizado para hoje</h2>
-        {itensHoje.length === 0 ? (
-          <Vazio texto="Nada priorizado para hoje ainda. Use a Tabela, o Kanban ou o detalhe de um item para marcar 'Priorizar para hoje'." />
-        ) : (
-          <ul className="flex flex-col gap-2">
-            {itensHoje.map((item) => (
-              <li
-                key={item.id}
-                onClick={() => setItemSelecionado(item)}
-                className="card card-hover flex cursor-pointer items-center justify-between gap-3 p-3"
-              >
-                <div className="flex min-w-0 items-center gap-3">
-                  <input
-                    type="checkbox"
-                    checked={item.priorizadoHoje}
-                    onClick={(e) => e.stopPropagation()}
-                    onChange={(e) =>
-                      togglePriorizado.mutate({ id: item.id, valor: e.target.checked })
-                    }
-                    className="h-4 w-4 accent-accent-primary"
-                  />
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-medium">{item.titulo}</p>
-                    <p className="truncate text-xs text-text-muted">{item.responsavel || 'Sem responsável'}</p>
-                  </div>
-                </div>
-                <div className="flex shrink-0 items-center gap-2">
-                  <PrioridadePill prioridade={item.prioridade} />
-                  <StatusPill status={item.status} />
-                </div>
-              </li>
-            ))}
-          </ul>
         )}
       </section>
 
@@ -218,6 +240,69 @@ export default function Hoje() {
               </li>
             ))}
           </ul>
+        )}
+      </section>
+
+      <section className="rounded-2xl border border-white/10 bg-bg-surface/30 p-4 sm:p-5">
+        <h2 className="mb-3 text-lg font-semibold">Priorizado para hoje</h2>
+        {itensHojeOrdenados.length === 0 ? (
+          <Vazio texto="Nada priorizado para hoje ainda. Use a Tabela, o Kanban ou o detalhe de um item para marcar 'Priorizar para hoje'." />
+        ) : (
+          <DndContext
+            sensors={sensoresPriorizados}
+            collisionDetection={closestCenter}
+            onDragEnd={handleDragEndPriorizados}
+          >
+            <SortableContext
+              items={itensHojeOrdenados.map((i) => i.id)}
+              strategy={verticalListSortingStrategy}
+            >
+              <ul className="flex flex-col gap-2">
+                {itensHojeOrdenados.map((item) => (
+                  <ItemPriorizadoRow
+                    key={item.id}
+                    item={item}
+                    onAbrir={() => setItemSelecionado(item)}
+                    onTogglePriorizado={(valor) => togglePriorizado.mutate({ id: item.id, valor })}
+                  />
+                ))}
+              </ul>
+            </SortableContext>
+          </DndContext>
+        )}
+      </section>
+
+      <section className="rounded-2xl border border-white/10 bg-bg-surface/30 p-4 sm:p-5">
+        <div className="mb-3 flex items-center justify-between">
+          <h2 className="text-lg font-semibold">Temas em foco esta semana</h2>
+          <Link to="/temas" className="text-sm text-accent-secondary hover:underline">
+            ver todos os temas →
+          </Link>
+        </div>
+        {temasEmFoco.length === 0 ? (
+          <Vazio texto="Nenhum tema marcado como foco da semana ainda. Vá em Temas e ative o toggle 'Focar esta semana'." />
+        ) : (
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {temasEmFoco.map((tema) => (
+              <Link
+                key={tema.id}
+                to={`/temas/${tema.id}`}
+                className="card card-hover flex flex-col gap-2 p-4"
+              >
+                <div className="flex items-center justify-between">
+                  <span className="font-semibold">{tema.nome}</span>
+                  <PrioridadePill prioridade={tema.prioridade} />
+                </div>
+                <p className="line-clamp-2 text-xs text-text-muted">{tema.descricao}</p>
+                <div className="mt-1 flex items-center justify-between text-xs">
+                  <span className="text-text-muted">{tema.categoria}</span>
+                  <span className="pill bg-status-pendente/20 text-status-pendente">
+                    {tema.itensPendentes} pendente(s)
+                  </span>
+                </div>
+              </Link>
+            ))}
+          </div>
         )}
       </section>
 
