@@ -113,8 +113,15 @@ async function enviarWhatsapp(telefone, apiKey, texto) {
   // outra coisa (ex.: "APIKey is invalid", "Invalid phone number") é erro.
   const sucesso = /message queued/i.test(corpo);
   if (!sucesso) {
-    const textoLimpo = corpo.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
-    throw new Error(`CallMeBot não confirmou o envio: ${textoLimpo.slice(0, 200) || `HTTP ${response.status}`}`);
+    // O corpo de erro do CallMeBot ecoa "Message to: ... Text to send:
+    // {a mensagem inteira}" ANTES do motivo real do erro — para mensagens
+    // longas (o normal aqui, com vários itens), um truncamento simples
+    // dos primeiros N caracteres cortava exatamente a parte útil. O
+    // motivo real vem sempre no último bloco "<p ...>", depois do eco.
+    const blocos = corpo.split(/<p\b[^>]*>/i);
+    const ultimoBloco = blocos[blocos.length - 1] || corpo;
+    const textoLimpo = ultimoBloco.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+    throw new Error(`CallMeBot não confirmou o envio: ${textoLimpo.slice(0, 300) || `HTTP ${response.status}`}`);
   }
   return corpo;
 }
