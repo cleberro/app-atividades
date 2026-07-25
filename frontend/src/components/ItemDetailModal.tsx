@@ -24,6 +24,10 @@ export default function ItemDetailModal({ item, onClose }: ItemDetailModalProps)
     queryKey: ['whatsapp-contatos'],
     queryFn: api.listarContatosWhatsapp,
   });
+  const { data: contatosEmail } = useQuery({
+    queryKey: ['email-contatos'],
+    queryFn: api.listarContatosEmail,
+  });
 
   const [titulo, setTitulo] = useState(item.titulo);
   const [temaId, setTemaId] = useState(item.temaIds[0] || '');
@@ -37,6 +41,7 @@ export default function ItemDetailModal({ item, onClose }: ItemDetailModalProps)
   const [anotacoes, setAnotacoes] = useState(item.anotacoesDiarias || '');
   const [notaNova, setNotaNova] = useState('');
   const [whatsappContatoIds, setWhatsappContatoIds] = useState<string[]>(item.whatsappContatoIds);
+  const [emailContatoIds, setEmailContatoIds] = useState<string[]>(item.emailContatoIds);
 
   // Reseta o formulário sempre que um item diferente é aberto no modal.
   useEffect(() => {
@@ -52,10 +57,17 @@ export default function ItemDetailModal({ item, onClose }: ItemDetailModalProps)
     setAnotacoes(item.anotacoesDiarias || '');
     setNotaNova('');
     setWhatsappContatoIds(item.whatsappContatoIds);
+    setEmailContatoIds(item.emailContatoIds);
   }, [item.id]);
 
   function alternarContatoWhatsapp(contatoId: string) {
     setWhatsappContatoIds((atual) =>
+      atual.includes(contatoId) ? atual.filter((id) => id !== contatoId) : [...atual, contatoId]
+    );
+  }
+
+  function alternarContatoEmail(contatoId: string) {
+    setEmailContatoIds((atual) =>
       atual.includes(contatoId) ? atual.filter((id) => id !== contatoId) : [...atual, contatoId]
     );
   }
@@ -87,6 +99,7 @@ export default function ItemDetailModal({ item, onClose }: ItemDetailModalProps)
         prioridade: (prioridade || undefined) as Prioridade | undefined,
         prazo: prazo || undefined,
         whatsappContatoIds,
+        emailContatoIds,
       }),
     onSuccess: invalidarTudo,
   });
@@ -310,6 +323,46 @@ export default function ItemDetailModal({ item, onClose }: ItemDetailModalProps)
                     type="button"
                     key={contato.id}
                     onClick={() => alternarContatoWhatsapp(contato.id)}
+                    aria-pressed={selecionado}
+                    className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
+                      selecionado
+                        ? 'bg-accent-primary text-white'
+                        : 'bg-bg-elevated text-text-muted hover:text-text-primary'
+                    } ${contato.ativo ? '' : 'opacity-50'}`}
+                  >
+                    {contato.nome}
+                    {!contato.ativo && ' (inativo)'}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        <div className="mt-3">
+          <div className="mb-1 flex items-center justify-between">
+            <label className="block text-xs font-medium text-text-muted">Notificar por E-mail quando vencer o prazo</label>
+            <Link to="/contatos" className="text-xs text-accent-secondary hover:underline">
+              gerenciar contatos →
+            </Link>
+          </div>
+          {(contatosEmail ?? []).length === 0 ? (
+            <p className="text-xs text-text-muted">
+              Nenhum contato cadastrado ainda —{' '}
+              <Link to="/contatos" className="text-accent-secondary hover:underline">
+                cadastre um
+              </Link>
+              .
+            </p>
+          ) : (
+            <div className="flex flex-wrap gap-2">
+              {(contatosEmail ?? []).map((contato) => {
+                const selecionado = emailContatoIds.includes(contato.id);
+                return (
+                  <button
+                    type="button"
+                    key={contato.id}
+                    onClick={() => alternarContatoEmail(contato.id)}
                     aria-pressed={selecionado}
                     className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
                       selecionado

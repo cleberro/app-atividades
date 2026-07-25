@@ -40,6 +40,136 @@ function formatarDataBr(dataISO) {
   return `${dia}/${mes}/${ano}`;
 }
 
+// Mesmas cores do design system do app (frontend/src/index.css e
+// components/Pills.tsx), reproduzidas aqui porque o e-mail HTML não pode
+// referenciar as variáveis CSS do frontend — precisa dos valores literais.
+const CORES = {
+  bgBase: '#14151F',
+  bgSurface: '#1C1E2E',
+  bgElevated: '#252740',
+  textPrimary: '#F4F4F8',
+  textMuted: '#9496B0',
+  accentPrimary: '#6C5CE7',
+  accentSecondary: '#00C2A8',
+};
+
+const STATUS_COLORS_EMAIL = {
+  Pendente: '#FDCB6E',
+  'Em Andamento': '#0984E3',
+  Bloqueada: '#D63031',
+  'Concluída': '#00B894',
+  'Não se aplica': '#5A5C78',
+};
+
+const PRIORIDADE_COLORS_EMAIL = {
+  Alta: '#D63031',
+  'Média': '#FDCB6E',
+  Baixa: '#00C2A8',
+};
+
+/** Pill inline-styled igual ao componente Pills.tsx: fundo na cor a ~15% + borda a ~33%. */
+function montarPillHtml(texto, cor) {
+  return `<span style="display:inline-block;padding:3px 10px;border-radius:9999px;font-size:12px;font-weight:600;background-color:${cor}26;color:${cor};border:1px solid ${cor}55;">${escapeHtml(
+    texto
+  )}</span>`;
+}
+
+/**
+ * Monta o HTML com a lista de itens de um tema para um contato, no mesmo
+ * design system do app (cores reais via CSS, não aproximação por emoji
+ * como no WhatsApp — o e-mail permite reproduzir o visual dos Pills e dos
+ * cards com fidelidade).
+ */
+function montarHtmlItensTema(contato, itens, nomeTema) {
+  const cardsHtml = itens
+    .map((item) => {
+      const corStatus = STATUS_COLORS_EMAIL[item.status] || CORES.textMuted;
+      const corPrioridade = item.prioridade ? PRIORIDADE_COLORS_EMAIL[item.prioridade] || CORES.textMuted : null;
+      return `
+        <div style="background-color:${CORES.bgSurface};border-radius:12px;padding:16px;margin-bottom:12px;">
+          <p style="margin:0 0 10px;font-size:15px;font-weight:600;color:${CORES.textPrimary};">${escapeHtml(
+            item.titulo
+          )}</p>
+          <div style="margin-bottom:10px;">
+            ${montarPillHtml(item.status || 'Sem status', corStatus)}
+            ${corPrioridade ? ' ' + montarPillHtml(item.prioridade, corPrioridade) : ''}
+          </div>
+          <p style="margin:4px 0;font-size:13px;color:${CORES.textMuted};">📁 Tema: ${escapeHtml(
+            item.temaNome || nomeTema || '—'
+          )}</p>
+          <p style="margin:4px 0;font-size:13px;color:${CORES.textMuted};">👤 Responsável: ${escapeHtml(
+            item.responsavel || '—'
+          )}</p>
+          <p style="margin:4px 0;font-size:13px;color:${CORES.textMuted};">📅 Prazo: ${
+            item.prazo ? formatarDataBr(item.prazo) : '—'
+          }</p>
+        </div>
+      `;
+    })
+    .join('');
+
+  return `
+    <div style="font-family: sans-serif; background-color:${CORES.bgBase}; padding:24px; color:${CORES.textPrimary};">
+      <h2 style="margin:0 0 4px;">Itens do tema "${escapeHtml(nomeTema || '')}"</h2>
+      <p style="color:${CORES.textMuted};margin:0 0 16px;">
+        Olá, ${escapeHtml(contato.nome)}! Segue a lista de ${itens.length} item(ns):
+      </p>
+      ${cardsHtml}
+      <p style="margin-top:16px;font-size:12px;color:${CORES.textMuted};">
+        Mensagem automática do app de Gestão de Temas de TI.
+      </p>
+    </div>
+  `;
+}
+
+/**
+ * Envia, para cada contato do grupo, um e-mail com os itens do tema dele.
+ * Nunca lança: cada contato tem seu próprio resultado (sucesso ou erro)
+ * no array retornado, para uma falha não travar os demais.
+ */
+async function enviarItensTemaPorEmail(gruposPorContato, nomeTema) {
+  const resultados = [];
+  for (const { contato, itens } of gruposPorContato) {
+    if (!resend) {
+      resultados.push({
+        contatoId: contato.id,
+        nome: contato.nome,
+        enviado: false,
+        motivo: 'RESEND_API_KEY não configurado no ambiente.',
+      });
+      continue;
+    }
+    if (!contato.email) {
+      resultados.push({
+        contatoId: contato.id,
+        nome: contato.nome,
+        enviado: false,
+        motivo: 'E-mail não cadastrado para este contato.',
+      });
+      continue;
+    }
+    try {
+      const html = montarHtmlItensTema(contato, itens, nomeTema);
+      const { error } = await resend.emails.send({
+        from: FROM_EMAIL,
+        to: [contato.email],
+        subject: `Itens do tema "${nomeTema}" — Gestão de Temas de TI`,
+        html,
+      });
+      if (error) throw new Error(error.message || JSON.stringify(error));
+      resultados.push({ contatoId: contato.id, nome: contato.nome, enviado: true, itens: itens.length });
+    } catch (err) {
+      resultados.push({
+        contatoId: contato.id,
+        nome: contato.nome,
+        enviado: false,
+        motivo: err.message || String(err),
+      });
+    }
+  }
+  return resultados;
+}
+
 /** Monta o HTML do resumo executivo a partir de { data, rotinas }. */
 function montarHtmlResumo(resumo) {
   const dataFormatada = formatarDataBr(resumo.data);
@@ -117,4 +247,4 @@ async function enviarResumoDiario(destinatarios, resumo) {
   return { enviado: true, destinatarios: destinatarios.length };
 }
 
-module.exports = { enviarResumoDiario, montarHtmlResumo };
+module.exports = { enviarResumoDiario, montarHtmlResumo, montarHtmlItensTema, enviarItensTemaPorEmail };

@@ -77,6 +77,21 @@ export default function TemaDetail() {
     }
   }
 
+  const enviarEmail = useMutation({
+    mutationFn: () => api.enviarItensEmailPorTema(id!),
+  });
+
+  function confirmarEnvioEmail() {
+    if (!tema) return;
+    if (
+      window.confirm(
+        `Enviar por e-mail os itens do tema "${tema.nome}" (com contato cadastrado) para os respectivos contatos, independente do prazo?`
+      )
+    ) {
+      enviarEmail.mutate();
+    }
+  }
+
   const responsaveisDisponiveis = useMemo(() => {
     const set = new Set<string>();
     (itensQuery.data ?? []).forEach((i) => i.responsavel && set.add(i.responsavel));
@@ -134,6 +149,13 @@ export default function TemaDetail() {
               {enviarWhatsapp.isPending ? 'Enviando...' : 'Enviar por WhatsApp'}
             </button>
             <button
+              onClick={confirmarEnvioEmail}
+              disabled={enviarEmail.isPending}
+              className="rounded-lg bg-bg-elevated px-3 py-1.5 text-sm font-medium text-text-muted hover:text-text-primary disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {enviarEmail.isPending ? 'Enviando...' : 'Enviar por E-mail'}
+            </button>
+            <button
               onClick={() => setEditandoTema((v) => !v)}
               className="rounded-lg bg-bg-elevated px-3 py-1.5 text-sm font-medium text-text-muted hover:text-text-primary"
             >
@@ -161,6 +183,32 @@ export default function TemaDetail() {
             ) : (
               <ul className="flex flex-col gap-1">
                 {enviarWhatsapp.data.envios.map((envio) => (
+                  <li key={envio.contatoId}>
+                    {envio.enviado ? (
+                      <span className="text-status-concluida">
+                        ✓ {envio.nome} — {envio.itens} item(ns) enviado(s)
+                      </span>
+                    ) : (
+                      <span className="text-status-bloqueada">
+                        ✕ {envio.nome} — {envio.motivo}
+                      </span>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        )}
+        {enviarEmail.isError && (
+          <p className="text-sm text-status-bloqueada">{(enviarEmail.error as Error).message}</p>
+        )}
+        {enviarEmail.isSuccess && (
+          <div className="rounded-lg bg-bg-elevated p-3 text-xs text-text-muted">
+            {enviarEmail.data.contatosNotificados === 0 ? (
+              <p>Nenhum item deste tema tem contato de e-mail vinculado.</p>
+            ) : (
+              <ul className="flex flex-col gap-1">
+                {enviarEmail.data.envios.map((envio) => (
                   <li key={envio.contatoId}>
                     {envio.enviado ? (
                       <span className="text-status-concluida">

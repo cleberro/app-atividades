@@ -155,6 +155,11 @@ completamente — isso é uma limitação do navegador, não do código.
 | DELETE | `/api/whatsapp/contatos/:id`       | Remove um contato                                             |
 | GET    | `/api/whatsapp/vencidos?data=`     | Envia por WhatsApp (CallMeBot) um aviso agrupado por contato dos itens com prazo vencido (padrão: hoje, fuso America/Sao_Paulo) — chamada automaticamente pelo Vercel Cron |
 | POST   | `/api/whatsapp/temas/:temaId/enviar` | Envia manualmente, por WhatsApp, os itens do tema com contato vinculado para os respectivos contatos — independente de prazo vencido |
+| GET    | `/api/email/contatos`              | Lista contatos de e-mail cadastrados para envio de itens        |
+| POST   | `/api/email/contatos`              | Cadastra um contato (`nome`, `email`)                            |
+| PATCH  | `/api/email/contatos/:id`          | Atualiza nome/email/ativo de um contato                          |
+| DELETE | `/api/email/contatos/:id`          | Remove um contato                                                |
+| POST   | `/api/email/temas/:temaId/enviar`  | Envia manualmente, por e-mail (Resend), os itens do tema com contato vinculado para os respectivos contatos — independente de prazo vencido |
 | GET    | `/api/health`                      | Healthcheck (mostra se `NOTION_API_KEY` está configurado) |
 
 Todas as rotas GET usam um cache em memória de 60s (arquivo `backend/cache.js`), invalidado
@@ -174,7 +179,7 @@ Lixeira do workspace, de onde pode ser restaurada) — não existe exclusão per
 | `/temas/:id`  | **Detalhe do tema** — itens do tema + formulário de novo item          |
 | `/habitos`    | **Hábitos** — cadastro/edição/exclusão de hábitos, histórico de check-ins |
 | `/rotinas`    | **Rotinas** — cadastro/edição/exclusão de rotinas, apontamento de tempo com barra de progresso, destinatários do resumo diário |
-| `/contatos`   | **Contatos WhatsApp** — cadastro de quem recebe avisos de itens vencidos, com passo a passo do CallMeBot |
+| `/contatos`   | **Contatos** — cadastro de quem recebe itens por WhatsApp (com passo a passo do CallMeBot) e por e-mail |
 | `/novo`       | **Novo item** — formulário completo de criação                         |
 
 A tela **Hoje** também mostra os hábitos previstos para o dia (calculado a partir de "Dias da
@@ -227,6 +232,20 @@ vencido** — útil para pedir uma atualização de status a qualquer momento, n
 atrasa. A mensagem usa o mesmo formato de `/vencidos`, mas só menciona "venceu há N dia(s)" para
 itens de fato vencidos (itens sem prazo ou com prazo futuro aparecem sem essa anotação).
 
+### Envio manual de itens por e-mail
+
+Diferente do WhatsApp, e-mail não exige que o destinatário autorize nada antes (não há política de
+opt-in equivalente à do WhatsApp Business). Por isso, para quem não quer/pode fazer o cadastro no
+CallMeBot, existe uma segunda opção: **Contatos Email** (cadastrados em `/contatos`, seção
+separada), vinculáveis a um item em "Notificar por E-mail quando vencer o prazo" no popup do item.
+O botão **"Enviar por E-mail"** na tela de Detalhe do Tema (`POST /api/email/temas/:temaId/enviar`)
+manda, via Resend, um e-mail HTML por contato com os itens do tema vinculados a ele — mesmo
+espírito do botão de WhatsApp (independente de prazo vencido), mas sem a rota automática diária de
+vencidos (só o disparo manual por tema, que foi o que foi pedido). O HTML reproduz o design system
+do app com fidelidade maior que o WhatsApp: usa as cores reais dos Pills via CSS (não uma
+aproximação por emoji) — ver `CORES`/`STATUS_COLORS_EMAIL`/`PRIORIDADE_COLORS_EMAIL` e
+`montarHtmlItensTema()` em `backend/services/emailService.js`.
+
 ## 8. Notas e decisões de implementação
 
 - Toda a lógica de acesso ao Notion está isolada em `backend/services/notionService.js` —
@@ -261,4 +280,9 @@ itens de fato vencidos (itens sem prazo ou com prazo futuro aparecem sem essa an
   adicionada à database Itens já existente (permite vários contatos por item). O envio está
   isolado em `backend/services/whatsappService.js`, no mesmo espírito do `notionService.js` e do
   `emailService.js`.
+- O envio manual de itens por e-mail usa outra database própria **"Contatos Email"** (Nome, Email,
+  Ativo) e a propriedade de relação **"Notificar Email"** em Itens — mesmo padrão de "Contatos
+  WhatsApp", só trocando telefone/apikey por um único campo de e-mail (não precisa de opt-in).
+  `agruparItensPorContato()` em `notionService.js` é compartilhada pelos dois canais (recebe qual
+  campo de relação usar).
 - Não há testes automatizados nem ESLint/Prettier configurados em nenhum dos dois projetos.

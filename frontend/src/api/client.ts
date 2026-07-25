@@ -22,6 +22,9 @@ import type {
   ContatoWhatsapp,
   NovoContatoWhatsappPayload,
   ResultadoEnvioWhatsapp,
+  ContatoEmail,
+  NovoContatoEmailPayload,
+  ResultadoEnvioEmail,
 } from './types';
 
 // Em dev local, aponta para o backend na porta 4000 por padrão. Em produção
@@ -164,6 +167,16 @@ export const api = {
     request<void>(`/api/whatsapp/contatos/${id}`, { method: 'DELETE' }),
   enviarItensWhatsappPorTema: (temaId: string) =>
     request<ResultadoEnvioWhatsapp>(`/api/whatsapp/temas/${temaId}/enviar`, { method: 'POST' }),
+
+  // Contatos Email (envio manual de itens por tema)
+  listarContatosEmail: () => request<ContatoEmail[]>('/api/email/contatos'),
+  criarContatoEmail: (dados: NovoContatoEmailPayload) =>
+    request<ContatoEmail>('/api/email/contatos', { method: 'POST', body: JSON.stringify(dados) }),
+  atualizarContatoEmail: (id: string, dados: Partial<NovoContatoEmailPayload>) =>
+    request<ContatoEmail>(`/api/email/contatos/${id}`, { method: 'PATCH', body: JSON.stringify(dados) }),
+  excluirContatoEmail: (id: string) => request<void>(`/api/email/contatos/${id}`, { method: 'DELETE' }),
+  enviarItensEmailPorTema: (temaId: string) =>
+    request<ResultadoEnvioEmail>(`/api/email/temas/${temaId}/enviar`, { method: 'POST' }),
 };
 
 export { ApiError };

@@ -36,6 +36,7 @@ export interface Item {
   ordemPriorizadoHoje: number | null;
   dataOrdemPriorizado: string | null;
   whatsappContatoIds: string[];
+  emailContatoIds: string[];
 }
 
 export interface NovoItemPayload {
@@ -58,6 +59,7 @@ export type AtualizarItemPayload = Partial<NovoItemPayload> & {
   ordemPriorizadoHoje?: number | null;
   dataOrdemPriorizado?: string | null;
   whatsappContatoIds?: string[];
+  emailContatoIds?: string[];
 };
 
 export interface NovoTemaPayload {
@@ -205,6 +207,33 @@ export interface ResultadoEnvioWhatsapp {
   data?: string;
   contatosNotificados: number;
   envios: EnvioWhatsappResultado[];
+}
+
+export interface ContatoEmail {
+  id: string;
+  nome: string;
+  email: string;
+  ativo: boolean;
+}
+
+export interface NovoContatoEmailPayload {
+  nome: string;
+  email: string;
+  ativo?: boolean;
+}
+
+export interface EnvioEmailResultado {
+  contatoId: string;
+  nome: string;
+  enviado: boolean;
+  itens?: number;
+  motivo?: string;
+}
+
+export interface ResultadoEnvioEmail {
+  tema?: string | null;
+  contatosNotificados: number;
+  envios: EnvioEmailResultado[];
 }
 
 export const STATUS_ITEM_OPCOES: StatusItem[] = [

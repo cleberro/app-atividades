@@ -1,10 +1,10 @@
 import { useState, FormEvent } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../api/client';
-import { Carregando, Erro, Vazio } from '../components/Estado';
+import { Carregando, Erro, Vazio } from './Estado';
 import type { ContatoWhatsapp } from '../api/types';
 
-export default function ContatosWhatsapp() {
+export default function ContatosWhatsappSection() {
   const queryClient = useQueryClient();
   const [contatoEditando, setContatoEditando] = useState<ContatoWhatsapp | null>(null);
   const [nome, setNome] = useState('');
@@ -58,7 +58,7 @@ export default function ContatosWhatsapp() {
   });
 
   function confirmarExclusao(id: string, nomeContato: string) {
-    if (window.confirm(`Remover o contato "${nomeContato}"? Ele deixa de receber avisos de itens vencidos.`)) {
+    if (window.confirm(`Remover o contato "${nomeContato}"? Ele deixa de receber avisos por WhatsApp.`)) {
       excluir.mutate(id);
     }
   }
@@ -70,14 +70,14 @@ export default function ContatosWhatsapp() {
   }
 
   return (
-    <div className="flex flex-col gap-6">
-      <header>
-        <h1 className="text-2xl font-semibold">Contatos WhatsApp</h1>
+    <section className="flex flex-col gap-4">
+      <div>
+        <h2 className="text-lg font-semibold">Contatos WhatsApp</h2>
         <p className="mt-1 text-sm text-text-muted">
-          Pessoas que podem receber avisos de itens com prazo vencido pelo WhatsApp. Vincule um contato a
-          um item no popup de detalhe do item, em "Notificar por WhatsApp".
+          Pessoas que podem receber itens pelo WhatsApp. Vincule um contato a um item no popup de detalhe
+          do item, em "Notificar por WhatsApp".
         </p>
-      </header>
+      </div>
 
       <div className="card flex flex-col gap-2 p-4 text-sm text-text-muted">
         <p className="font-medium text-text-primary">Como conseguir a ApiKey do CallMeBot (grátis)</p>
@@ -168,10 +168,7 @@ export default function ContatosWhatsapp() {
       ) : (
         <ul className="flex flex-col gap-2 sm:max-w-xl">
           {(data ?? []).map((contato) => (
-            <li
-              key={contato.id}
-              className="card flex flex-wrap items-center justify-between gap-2 p-3"
-            >
+            <li key={contato.id} className="card flex flex-wrap items-center justify-between gap-2 p-3">
               <div className={contato.ativo ? '' : 'text-text-muted line-through'}>
                 <p className="text-sm font-medium">{contato.nome}</p>
                 <p className="text-xs text-text-muted">{contato.telefone}</p>
@@ -206,6 +203,6 @@ export default function ContatosWhatsapp() {
           ))}
         </ul>
       )}
-    </div>
+    </section>
   );
 }

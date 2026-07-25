@@ -31,6 +31,7 @@ const ROTINAS_DB_ID = '3a1a1a73-667d-81aa-90e3-d7e3ffad55f2';
 const APONTAMENTOS_ROTINA_DB_ID = '3a1a1a73-667d-813c-92a6-dc60b486cb66';
 const DESTINATARIOS_DB_ID = '3a1a1a73-667d-81a9-8107-f914307562f7';
 const CONTATOS_WHATSAPP_DB_ID = '3a7a1a73-667d-81da-bb11-e596ee98b22d';
+const CONTATOS_EMAIL_DB_ID = '3a8a1a73-667d-81fe-b8d3-ea5f0ba225bc';
 
 const notion = new Client({ auth: process.env.NOTION_API_KEY });
 
@@ -213,6 +214,7 @@ function mapItem(page) {
     ordemPriorizadoHoje: getNumber(p['Ordem Priorizado Hoje']),
     dataOrdemPriorizado: getDate(p['Data Ordem Priorizado']),
     whatsappContatoIds: getRelationIds(p['Notificar WhatsApp']),
+    emailContatoIds: getRelationIds(p['Notificar Email']),
   };
 }
 
@@ -275,6 +277,16 @@ function mapContatoWhatsapp(page) {
     nome: getTitle(p['Nome']),
     telefone: getRichText(p['Telefone']),
     apiKeyCallMeBot: getRichText(p['ApiKey CallMeBot']),
+    ativo: getCheckbox(p['Ativo']),
+  };
+}
+
+function mapContatoEmail(page) {
+  const p = page.properties;
+  return {
+    id: page.id,
+    nome: getTitle(p['Nome']),
+    email: getRichText(p['Email']),
     ativo: getCheckbox(p['Ativo']),
   };
 }
@@ -571,6 +583,11 @@ async function updateItem(itemId, dados) {
   if (dados.whatsappContatoIds !== undefined) {
     properties['Notificar WhatsApp'] = {
       relation: (dados.whatsappContatoIds || []).map((id) => ({ id })),
+    };
+  }
+  if (dados.emailContatoIds !== undefined) {
+    properties['Notificar Email'] = {
+      relation: (dados.emailContatoIds || []).map((id) => ({ id })),
     };
   }
 
@@ -1147,18 +1164,22 @@ async function getVencidosPorContato(dataReferencia) {
   const nomeTemaPorId = new Map(temas.map((t) => [t.id, t.nome]));
   const contatosAtivosPorId = new Map(contatos.filter((c) => c.ativo).map((c) => [c.id, c]));
 
-  return agruparItensPorContato(itensVencidos, contatosAtivosPorId, nomeTemaPorId);
+  return agruparItensPorContato(itensVencidos, contatosAtivosPorId, nomeTemaPorId, 'whatsappContatoIds');
 }
 
-/** Agrupa itens por contato WhatsApp ativo vinculado a eles — usado tanto pelo aviso de vencidos quanto pelo envio manual por tema. */
-function agruparItensPorContato(itens, contatosAtivosPorId, nomeTemaPorId) {
+/**
+ * Agrupa itens por contato ativo vinculado a eles em "campoRelacao"
+ * (whatsappContatoIds ou emailContatoIds) — usado tanto pelo aviso de
+ * vencidos quanto pelo envio manual por tema, nos dois canais.
+ */
+function agruparItensPorContato(itens, contatosAtivosPorId, nomeTemaPorId, campoRelacao) {
   const itensPorContato = new Map();
   for (const item of itens) {
     const itemComTema = {
       ...item,
       temaNome: item.temaIds[0] ? nomeTemaPorId.get(item.temaIds[0]) || null : null,
     };
-    for (const contatoId of item.whatsappContatoIds) {
+    for (const contatoId of item[campoRelacao]) {
       if (!contatosAtivosPorId.has(contatoId)) continue;
       if (!itensPorContato.has(contatoId)) itensPorContato.set(contatoId, []);
       itensPorContato.get(contatoId).push(itemComTema);
@@ -1189,7 +1210,68 @@ async function getItensPorTemaComContato(temaId) {
 
   return {
     temaNome: nomeTemaPorId.get(temaId) || null,
-    grupos: agruparItensPorContato(itensComContato, contatosAtivosPorId, nomeTemaPorId),
+    grupos: agruparItensPorContato(itensComContato, contatosAtivosPorId, nomeTemaPorId, 'whatsappContatoIds'),
+  };
+}
+
+// ---------------------------------------------------------------------
+// Contatos Email / envio manual de itens por e-mail
+// ---------------------------------------------------------------------
+
+async function listContatosEmail() {
+  const response = await notion.databases.query({ database_id: CONTATOS_EMAIL_DB_ID, page_size: 100 });
+  return response.results.map(mapContatoEmail);
+}
+
+async function createContatoEmail(dados) {
+  const page = await notion.pages.create({
+    parent: { database_id: CONTATOS_EMAIL_DB_ID },
+    properties: {
+      Nome: { title: [{ text: { content: dados.nome || 'Sem nome' } }] },
+      Email: { rich_text: buildRichText(dados.email || '') },
+      Ativo: { checkbox: dados.ativo === undefined ? true : !!dados.ativo },
+    },
+  });
+  return mapContatoEmail(page);
+}
+
+async function updateContatoEmail(contatoId, dados) {
+  const properties = {};
+  if (dados.nome !== undefined) {
+    properties.Nome = { title: [{ text: { content: dados.nome } }] };
+  }
+  if (dados.email !== undefined) {
+    properties.Email = { rich_text: buildRichText(dados.email) };
+  }
+  if (dados.ativo !== undefined) {
+    properties.Ativo = { checkbox: !!dados.ativo };
+  }
+  const page = await notion.pages.update({ page_id: contatoId, properties });
+  return mapContatoEmail(page);
+}
+
+async function deleteContatoEmail(contatoId) {
+  await notion.pages.update({ page_id: contatoId, archived: true });
+}
+
+/**
+ * Itens de um tema que têm ao menos um contato de e-mail vinculado,
+ * agrupados por contato — usado no envio manual "por tema" por e-mail.
+ */
+async function getItensPorTemaComContatoEmail(temaId) {
+  const [itensDoTema, contatos, temas] = await Promise.all([
+    listItens({ tema: temaId }),
+    listContatosEmail(),
+    listTemas(),
+  ]);
+
+  const nomeTemaPorId = new Map(temas.map((t) => [t.id, t.nome]));
+  const contatosAtivosPorId = new Map(contatos.filter((c) => c.ativo).map((c) => [c.id, c]));
+  const itensComContato = itensDoTema.filter((i) => i.emailContatoIds.length > 0);
+
+  return {
+    temaNome: nomeTemaPorId.get(temaId) || null,
+    grupos: agruparItensPorContato(itensComContato, contatosAtivosPorId, nomeTemaPorId, 'emailContatoIds'),
   };
 }
 
@@ -1202,6 +1284,7 @@ module.exports = {
   APONTAMENTOS_ROTINA_DB_ID,
   DESTINATARIOS_DB_ID,
   CONTATOS_WHATSAPP_DB_ID,
+  CONTATOS_EMAIL_DB_ID,
   listTemas,
   createTema,
   updateTema,
@@ -1241,4 +1324,9 @@ module.exports = {
   deleteContatoWhatsapp,
   getVencidosPorContato,
   getItensPorTemaComContato,
+  listContatosEmail,
+  createContatoEmail,
+  updateContatoEmail,
+  deleteContatoEmail,
+  getItensPorTemaComContatoEmail,
 };

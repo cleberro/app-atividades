@@ -8,7 +8,7 @@ import TemaDetail from './pages/TemaDetail';
 import Novo from './pages/Novo';
 import Habitos from './pages/Habitos';
 import Rotinas from './pages/Rotinas';
-import ContatosWhatsapp from './pages/ContatosWhatsapp';
+import Contatos from './pages/Contatos';
 
 export default function App() {
   return (
@@ -23,7 +23,7 @@ export default function App() {
           <Route path="/temas/:id" element={<TemaDetail />} />
           <Route path="/habitos" element={<Habitos />} />
           <Route path="/rotinas" element={<Rotinas />} />
-          <Route path="/contatos" element={<ContatosWhatsapp />} />
+          <Route path="/contatos" element={<Contatos />} />
           <Route path="/novo" element={<Novo />} />
         </Routes>
       </main>
