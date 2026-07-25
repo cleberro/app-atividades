@@ -2,9 +2,11 @@ import { useState, FormEvent } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../api/client';
 import { Carregando, Erro, Vazio } from '../components/Estado';
+import type { ContatoWhatsapp } from '../api/types';
 
 export default function ContatosWhatsapp() {
   const queryClient = useQueryClient();
+  const [contatoEditando, setContatoEditando] = useState<ContatoWhatsapp | null>(null);
   const [nome, setNome] = useState('');
   const [telefone, setTelefone] = useState('');
   const [apiKeyCallMeBot, setApiKeyCallMeBot] = useState('');
@@ -14,13 +16,30 @@ export default function ContatosWhatsapp() {
     queryFn: api.listarContatosWhatsapp,
   });
 
-  const criar = useMutation({
-    mutationFn: () => api.criarContatoWhatsapp({ nome: nome.trim(), telefone: telefone.trim(), apiKeyCallMeBot: apiKeyCallMeBot.trim() }),
+  function limparFormulario() {
+    setContatoEditando(null);
+    setNome('');
+    setTelefone('');
+    setApiKeyCallMeBot('');
+  }
+
+  function iniciarEdicao(contato: ContatoWhatsapp) {
+    setContatoEditando(contato);
+    setNome(contato.nome);
+    setTelefone(contato.telefone);
+    setApiKeyCallMeBot(contato.apiKeyCallMeBot);
+  }
+
+  const salvar = useMutation({
+    mutationFn: () => {
+      const dados = { nome: nome.trim(), telefone: telefone.trim(), apiKeyCallMeBot: apiKeyCallMeBot.trim() };
+      return contatoEditando
+        ? api.atualizarContatoWhatsapp(contatoEditando.id, dados)
+        : api.criarContatoWhatsapp(dados);
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['whatsapp-contatos'] });
-      setNome('');
-      setTelefone('');
-      setApiKeyCallMeBot('');
+      limparFormulario();
     },
   });
 
@@ -31,7 +50,10 @@ export default function ContatosWhatsapp() {
 
   const excluir = useMutation({
     mutationFn: (id: string) => api.excluirContatoWhatsapp(id),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['whatsapp-contatos'] }),
+    onSuccess: (_data, id) => {
+      queryClient.invalidateQueries({ queryKey: ['whatsapp-contatos'] });
+      if (contatoEditando?.id === id) limparFormulario();
+    },
     onError: (err: Error) => window.alert(err.message),
   });
 
@@ -44,7 +66,7 @@ export default function ContatosWhatsapp() {
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
     if (!nome.trim() || !telefone.trim() || !apiKeyCallMeBot.trim()) return;
-    criar.mutate();
+    salvar.mutate();
   }
 
   return (
@@ -62,7 +84,7 @@ export default function ContatosWhatsapp() {
         <ol className="list-decimal space-y-1 pl-5">
           <li>
             Adicione o número{' '}
-            <span className="font-mono text-text-primary">+34 644 59 71 65</span> aos contatos do celular
+            <span className="font-mono text-text-primary">+34 644 66 32 62</span> aos contatos do celular
             que vai receber os avisos.
           </li>
           <li>
@@ -72,9 +94,16 @@ export default function ContatosWhatsapp() {
           </li>
           <li>Em poucos segundos o bot responde com uma ApiKey — cole ela no formulário abaixo.</li>
         </ol>
+        <p>
+          Se a apikey parar de funcionar (erro "APIKey is invalid" ao enviar), repita esses passos para
+          gerar uma nova e use "Editar" no contato para atualizá-la.
+        </p>
       </div>
 
       <form onSubmit={handleSubmit} className="card flex flex-col gap-3 p-4 sm:max-w-xl">
+        {contatoEditando && (
+          <p className="text-xs font-medium text-accent-secondary">Editando "{contatoEditando.nome}"</p>
+        )}
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <div>
             <label className="mb-1 block text-xs font-medium text-text-muted">Nome *</label>
@@ -109,14 +138,25 @@ export default function ContatosWhatsapp() {
             required
           />
         </div>
-        <button
-          type="submit"
-          disabled={criar.isPending || !nome.trim() || !telefone.trim() || !apiKeyCallMeBot.trim()}
-          className="mt-1 self-start rounded-lg bg-accent-primary px-4 py-2 text-sm font-semibold text-white transition-transform hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          {criar.isPending ? 'Salvando...' : 'Adicionar contato'}
-        </button>
-        {criar.isError && <p className="text-xs text-status-bloqueada">{(criar.error as Error).message}</p>}
+        <div className="flex items-center gap-2">
+          <button
+            type="submit"
+            disabled={salvar.isPending || !nome.trim() || !telefone.trim() || !apiKeyCallMeBot.trim()}
+            className="self-start rounded-lg bg-accent-primary px-4 py-2 text-sm font-semibold text-white transition-transform hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {salvar.isPending ? 'Salvando...' : contatoEditando ? 'Salvar alterações' : 'Adicionar contato'}
+          </button>
+          {contatoEditando && (
+            <button
+              type="button"
+              onClick={limparFormulario}
+              className="rounded-lg px-3 py-2 text-sm font-medium text-text-muted hover:text-text-primary"
+            >
+              Cancelar
+            </button>
+          )}
+        </div>
+        {salvar.isError && <p className="text-xs text-status-bloqueada">{(salvar.error as Error).message}</p>}
       </form>
 
       {isLoading ? (
@@ -146,6 +186,13 @@ export default function ContatosWhatsapp() {
                   />
                   Ativo
                 </label>
+                <button
+                  onClick={() => iniciarEdicao(contato)}
+                  aria-label={`Editar contato ${contato.nome}`}
+                  className="text-xs font-medium text-text-muted hover:text-text-primary"
+                >
+                  Editar
+                </button>
                 <button
                   onClick={() => confirmarExclusao(contato.id, contato.nome)}
                   disabled={excluir.isPending}
