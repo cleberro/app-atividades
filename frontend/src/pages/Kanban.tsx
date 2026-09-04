@@ -21,6 +21,7 @@ import ItemDetailModal from '../components/ItemDetailModal';
 import type { Item, StatusItem } from '../api/types';
 import { STATUS_ITEM_OPCOES } from '../api/types';
 import { ordenarItens, type CriterioOrdenacao } from '../utils/ordenacao';
+import { prazoEfetivo } from '../utils/prazo';
 
 const COLUMN_COLOR: Record<string, string> = {
   Pendente: 'var(--status-pendente)',
@@ -151,7 +152,7 @@ export default function Kanban() {
     if (!passaFiltroMulti(item.tipo, filtros.tipo)) return false;
     if (!passaFiltroMulti(item.prioridade, filtros.prioridade)) return false;
     if (!passaFiltroMulti(item.responsavel, filtros.responsavel)) return false;
-    if (!passaFiltroPrazo(item.prazo, filtros.prazo)) return false;
+    if (!passaFiltroPrazo(prazoEfetivo(item), filtros.prazo)) return false;
     if (filtros.busca && !item.titulo.toLowerCase().includes(filtros.busca.toLowerCase())) return false;
     return true;
   }

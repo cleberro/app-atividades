@@ -3,6 +3,7 @@ export type Prioridade = 'Alta' | 'Média' | 'Baixa';
 export type TipoItem = 'Ação' | 'Informação';
 export type StatusTema = 'Ativo' | 'Pausado' | 'Concluído';
 export type Origem = 'Ata Notion' | 'App';
+export type PodeDelegar = 'Sim' | 'Não' | 'A avaliar';
 
 export interface Tema {
   id: string;
@@ -37,6 +38,15 @@ export interface Item {
   dataOrdemPriorizado: string | null;
   whatsappContatoIds: string[];
   emailContatoIds: string[];
+  objetivoProblema: string;
+  situacaoAtual: string;
+  situacaoDesejada: string;
+  /** Plano de ação em linhas "[ ] tarefa" / "[x] tarefa" (ver utils/subtarefas.ts). */
+  oQuePrecisaSerFeito: string;
+  podeDelegar: PodeDelegar | null;
+  delegarPara: string;
+  motivoAtraso: string;
+  dataReprogramacao: string | null;
 }
 
 export interface NovoItemPayload {
@@ -53,6 +63,14 @@ export interface NovoItemPayload {
   reuniaoOrigem?: string;
   anotacoesDiarias?: string;
   urlAta?: string;
+  objetivoProblema?: string;
+  situacaoAtual?: string;
+  situacaoDesejada?: string;
+  oQuePrecisaSerFeito?: string;
+  podeDelegar?: PodeDelegar | '';
+  delegarPara?: string;
+  motivoAtraso?: string;
+  dataReprogramacao?: string;
 }
 
 export type AtualizarItemPayload = Partial<NovoItemPayload> & {
@@ -246,4 +264,5 @@ export const STATUS_ITEM_OPCOES: StatusItem[] = [
 
 export const PRIORIDADE_OPCOES: Prioridade[] = ['Alta', 'Média', 'Baixa'];
 export const TIPO_OPCOES: TipoItem[] = ['Ação', 'Informação'];
+export const PODE_DELEGAR_OPCOES: PodeDelegar[] = ['Sim', 'Não', 'A avaliar'];
 export const STATUS_TEMA_OPCOES: StatusTema[] = ['Ativo', 'Pausado', 'Concluído'];

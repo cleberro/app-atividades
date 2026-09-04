@@ -3,8 +3,10 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { api } from '../api/client';
 import { PrioridadePill, StatusPill, TipoPill } from './Pills';
-import type { Item, Prioridade, StatusItem, TipoItem } from '../api/types';
-import { PRIORIDADE_OPCOES, STATUS_ITEM_OPCOES, TIPO_OPCOES } from '../api/types';
+import type { Item, PodeDelegar, Prioridade, StatusItem, TipoItem } from '../api/types';
+import { PODE_DELEGAR_OPCOES, PRIORIDADE_OPCOES, STATUS_ITEM_OPCOES, TIPO_OPCOES } from '../api/types';
+import ChecklistSubtarefas from './ChecklistSubtarefas';
+import { estaAtrasado, formatarDataBr } from '../utils/prazo';
 
 interface ItemDetailModalProps {
   item: Item;
@@ -42,6 +44,14 @@ export default function ItemDetailModal({ item, onClose }: ItemDetailModalProps)
   const [notaNova, setNotaNova] = useState('');
   const [whatsappContatoIds, setWhatsappContatoIds] = useState<string[]>(item.whatsappContatoIds);
   const [emailContatoIds, setEmailContatoIds] = useState<string[]>(item.emailContatoIds);
+  const [objetivoProblema, setObjetivoProblema] = useState(item.objetivoProblema);
+  const [situacaoAtual, setSituacaoAtual] = useState(item.situacaoAtual);
+  const [situacaoDesejada, setSituacaoDesejada] = useState(item.situacaoDesejada);
+  const [oQuePrecisaSerFeito, setOQuePrecisaSerFeito] = useState(item.oQuePrecisaSerFeito);
+  const [podeDelegar, setPodeDelegar] = useState<PodeDelegar | ''>(item.podeDelegar || '');
+  const [delegarPara, setDelegarPara] = useState(item.delegarPara);
+  const [motivoAtraso, setMotivoAtraso] = useState(item.motivoAtraso);
+  const [dataReprogramacao, setDataReprogramacao] = useState(item.dataReprogramacao || '');
 
   // Reseta o formulário sempre que um item diferente é aberto no modal.
   useEffect(() => {
@@ -58,6 +68,14 @@ export default function ItemDetailModal({ item, onClose }: ItemDetailModalProps)
     setNotaNova('');
     setWhatsappContatoIds(item.whatsappContatoIds);
     setEmailContatoIds(item.emailContatoIds);
+    setObjetivoProblema(item.objetivoProblema);
+    setSituacaoAtual(item.situacaoAtual);
+    setSituacaoDesejada(item.situacaoDesejada);
+    setOQuePrecisaSerFeito(item.oQuePrecisaSerFeito);
+    setPodeDelegar(item.podeDelegar || '');
+    setDelegarPara(item.delegarPara);
+    setMotivoAtraso(item.motivoAtraso);
+    setDataReprogramacao(item.dataReprogramacao || '');
   }, [item.id]);
 
   function alternarContatoWhatsapp(contatoId: string) {
@@ -100,6 +118,14 @@ export default function ItemDetailModal({ item, onClose }: ItemDetailModalProps)
         prazo: prazo || undefined,
         whatsappContatoIds,
         emailContatoIds,
+        objetivoProblema,
+        situacaoAtual,
+        situacaoDesejada,
+        oQuePrecisaSerFeito,
+        podeDelegar,
+        delegarPara,
+        motivoAtraso,
+        dataReprogramacao: dataReprogramacao || '',
       }),
     onSuccess: invalidarTudo,
   });
@@ -151,6 +177,14 @@ export default function ItemDetailModal({ item, onClose }: ItemDetailModalProps)
   }
 
   const temaAtual = (temas ?? []).find((t) => t.id === (item.temaIds[0] || temaId));
+
+  // Atraso avaliado sobre os valores em edição (e não sobre o item salvo),
+  // para o bloco reagir na hora em que o prazo ou o status muda na tela.
+  const atrasado = estaAtrasado({
+    prazo: prazo || null,
+    dataReprogramacao: dataReprogramacao || null,
+    status: (status || null) as StatusItem | null,
+  });
 
   return (
     <div
@@ -252,13 +286,20 @@ export default function ItemDetailModal({ item, onClose }: ItemDetailModalProps)
             />
           </div>
           <div>
-            <label className="mb-1 block text-xs font-medium text-text-muted">Prazo</label>
+            <label className="mb-1 block text-xs font-medium text-text-muted">
+              Prazo{dataReprogramacao ? ' (original)' : ''}
+            </label>
             <input
               type="date"
               className="input-base w-full"
               value={prazo}
               onChange={(e) => setPrazo(e.target.value)}
             />
+            {dataReprogramacao && (
+              <p className="mt-1 text-xs text-text-muted">
+                Vale a reprogramação: {formatarDataBr(dataReprogramacao)}
+              </p>
+            )}
           </div>
         </div>
 
@@ -270,6 +311,113 @@ export default function ItemDetailModal({ item, onClose }: ItemDetailModalProps)
             value={descricao}
             onChange={(e) => setDescricao(e.target.value)}
           />
+        </div>
+
+        <div className="mt-4 rounded-lg bg-bg-elevated/40 p-3">
+          <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-text-muted">Detalhamento</p>
+          <div className="flex flex-col gap-3">
+            <div>
+              <label className="mb-1 block text-xs font-medium text-text-muted">
+                Objetivo / problema a resolver
+              </label>
+              <textarea
+                className="input-base w-full"
+                rows={2}
+                placeholder="Que problema este item resolve? Qual o objetivo?"
+                value={objetivoProblema}
+                onChange={(e) => setObjetivoProblema(e.target.value)}
+              />
+            </div>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div>
+                <label className="mb-1 block text-xs font-medium text-text-muted">Como está hoje</label>
+                <textarea
+                  className="input-base w-full"
+                  rows={3}
+                  placeholder="Situação atual"
+                  value={situacaoAtual}
+                  onChange={(e) => setSituacaoAtual(e.target.value)}
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-medium text-text-muted">Como deveria ser</label>
+                <textarea
+                  className="input-base w-full"
+                  rows={3}
+                  placeholder="Situação desejada"
+                  value={situacaoDesejada}
+                  onChange={(e) => setSituacaoDesejada(e.target.value)}
+                />
+              </div>
+            </div>
+
+            <ChecklistSubtarefas valor={oQuePrecisaSerFeito} onChange={setOQuePrecisaSerFeito} />
+
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div>
+                <label className="mb-1 block text-xs font-medium text-text-muted">Posso delegar?</label>
+                <select
+                  className="input-base w-full"
+                  value={podeDelegar}
+                  onChange={(e) => setPodeDelegar(e.target.value as PodeDelegar | '')}
+                >
+                  <option value="">Não definido</option>
+                  {PODE_DELEGAR_OPCOES.map((op) => (
+                    <option key={op} value={op}>
+                      {op}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-medium text-text-muted">Delegar para</label>
+                <input
+                  className="input-base w-full"
+                  value={delegarPara}
+                  onChange={(e) => setDelegarPara(e.target.value)}
+                  placeholder="Nome de quem vai assumir"
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div
+          className={`mt-3 rounded-lg p-3 ${
+            atrasado ? 'bg-status-bloqueada/10 ring-1 ring-status-bloqueada/40' : 'bg-bg-elevated/40'
+          }`}
+        >
+          <p
+            className={`mb-3 text-xs font-semibold uppercase tracking-wide ${
+              atrasado ? 'text-status-bloqueada' : 'text-text-muted'
+            }`}
+          >
+            {atrasado ? '⚠ Item atrasado — atraso e reprogramação' : 'Atraso e reprogramação'}
+          </p>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div>
+              <label className="mb-1 block text-xs font-medium text-text-muted">Motivo do atraso</label>
+              <textarea
+                className="input-base w-full"
+                rows={2}
+                placeholder="Por que o prazo não foi cumprido?"
+                value={motivoAtraso}
+                onChange={(e) => setMotivoAtraso(e.target.value)}
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-medium text-text-muted">Data de reprogramação</label>
+              <input
+                type="date"
+                className="input-base w-full"
+                value={dataReprogramacao}
+                onChange={(e) => setDataReprogramacao(e.target.value)}
+              />
+              <p className="mt-1 text-xs text-text-muted">
+                Passa a valer no lugar do prazo em filtros, ordenação e avisos. O prazo original é preservado.
+              </p>
+            </div>
+          </div>
         </div>
 
         <div className="mt-3">

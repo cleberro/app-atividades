@@ -1,8 +1,9 @@
 import { useState, FormEvent } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../api/client';
-import type { NovoItemPayload, Prioridade, StatusItem, TipoItem } from '../api/types';
-import { PRIORIDADE_OPCOES, STATUS_ITEM_OPCOES, TIPO_OPCOES } from '../api/types';
+import type { NovoItemPayload, PodeDelegar, Prioridade, StatusItem, TipoItem } from '../api/types';
+import { PODE_DELEGAR_OPCOES, PRIORIDADE_OPCOES, STATUS_ITEM_OPCOES, TIPO_OPCOES } from '../api/types';
+import ChecklistSubtarefas from './ChecklistSubtarefas';
 
 interface ItemFormProps {
   temaIdFixo?: string;
@@ -23,6 +24,16 @@ export default function ItemForm({ temaIdFixo, onSucesso, compacto }: ItemFormPr
   const [prioridade, setPrioridade] = useState<Prioridade | ''>('Média');
   const [prazo, setPrazo] = useState('');
 
+  // Detalhamento: fica recolhido por padrão para o cadastro rápido continuar
+  // rápido — quem quer estruturar o item (objetivo, situação, plano) abre.
+  const [detalhesAbertos, setDetalhesAbertos] = useState(false);
+  const [objetivoProblema, setObjetivoProblema] = useState('');
+  const [situacaoAtual, setSituacaoAtual] = useState('');
+  const [situacaoDesejada, setSituacaoDesejada] = useState('');
+  const [oQuePrecisaSerFeito, setOQuePrecisaSerFeito] = useState('');
+  const [podeDelegar, setPodeDelegar] = useState<PodeDelegar | ''>('');
+  const [delegarPara, setDelegarPara] = useState('');
+
   const mutation = useMutation({
     mutationFn: (payload: NovoItemPayload) => api.criarItem(payload),
     onSuccess: () => {
@@ -33,6 +44,12 @@ export default function ItemForm({ temaIdFixo, onSucesso, compacto }: ItemFormPr
       setDescricao('');
       setResponsavel('');
       setPrazo('');
+      setObjetivoProblema('');
+      setSituacaoAtual('');
+      setSituacaoDesejada('');
+      setOQuePrecisaSerFeito('');
+      setPodeDelegar('');
+      setDelegarPara('');
       onSucesso?.();
     },
   });
@@ -49,6 +66,12 @@ export default function ItemForm({ temaIdFixo, onSucesso, compacto }: ItemFormPr
       status: (status || undefined) as StatusItem | undefined,
       prioridade: (prioridade || undefined) as Prioridade | undefined,
       prazo: prazo || undefined,
+      objetivoProblema: objetivoProblema || undefined,
+      situacaoAtual: situacaoAtual || undefined,
+      situacaoDesejada: situacaoDesejada || undefined,
+      oQuePrecisaSerFeito: oQuePrecisaSerFeito || undefined,
+      podeDelegar: (podeDelegar || undefined) as PodeDelegar | undefined,
+      delegarPara: delegarPara || undefined,
     });
   }
 
@@ -150,6 +173,84 @@ export default function ItemForm({ temaIdFixo, onSucesso, compacto }: ItemFormPr
           value={descricao}
           onChange={(e) => setDescricao(e.target.value)}
         />
+      </div>
+
+      <div className="rounded-lg bg-bg-elevated/40 p-3">
+        <button
+          type="button"
+          onClick={() => setDetalhesAbertos((aberto) => !aberto)}
+          aria-expanded={detalhesAbertos}
+          className="flex w-full items-center justify-between text-left text-xs font-medium text-text-muted hover:text-text-primary"
+        >
+          <span>Detalhamento (objetivo, situação, plano de ação, delegação)</span>
+          <span aria-hidden="true">{detalhesAbertos ? '▲' : '▼'}</span>
+        </button>
+
+        {detalhesAbertos && (
+          <div className="mt-3 flex flex-col gap-3">
+            <div>
+              <label className="mb-1 block text-xs font-medium text-text-muted">
+                Objetivo / problema a resolver
+              </label>
+              <textarea
+                className="input-base w-full"
+                rows={2}
+                placeholder="Que problema este item resolve? Qual o objetivo?"
+                value={objetivoProblema}
+                onChange={(e) => setObjetivoProblema(e.target.value)}
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-medium text-text-muted">Como está hoje</label>
+              <textarea
+                className="input-base w-full"
+                rows={2}
+                placeholder="Situação atual"
+                value={situacaoAtual}
+                onChange={(e) => setSituacaoAtual(e.target.value)}
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-medium text-text-muted">Como deveria ser</label>
+              <textarea
+                className="input-base w-full"
+                rows={2}
+                placeholder="Situação desejada"
+                value={situacaoDesejada}
+                onChange={(e) => setSituacaoDesejada(e.target.value)}
+              />
+            </div>
+
+            <ChecklistSubtarefas valor={oQuePrecisaSerFeito} onChange={setOQuePrecisaSerFeito} />
+
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div>
+                <label className="mb-1 block text-xs font-medium text-text-muted">Posso delegar?</label>
+                <select
+                  className="input-base w-full"
+                  value={podeDelegar}
+                  onChange={(e) => setPodeDelegar(e.target.value as PodeDelegar | '')}
+                >
+                  <option value="">Não definido</option>
+                  {PODE_DELEGAR_OPCOES.map((op) => (
+                    <option key={op} value={op}>
+                      {op}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-medium text-text-muted">Delegar para</label>
+                <input
+                  className="input-base w-full"
+                  value={delegarPara}
+                  onChange={(e) => setDelegarPara(e.target.value)}
+                  placeholder="Nome de quem vai assumir"
+                />
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       <button

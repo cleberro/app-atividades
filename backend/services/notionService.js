@@ -215,6 +215,14 @@ function mapItem(page) {
     dataOrdemPriorizado: getDate(p['Data Ordem Priorizado']),
     whatsappContatoIds: getRelationIds(p['Notificar WhatsApp']),
     emailContatoIds: getRelationIds(p['Notificar Email']),
+    objetivoProblema: getRichText(p['Objetivo / Problema']),
+    situacaoAtual: getRichText(p['Situação Atual']),
+    situacaoDesejada: getRichText(p['Situação Desejada']),
+    oQuePrecisaSerFeito: getRichText(p['O Que Precisa Ser Feito']),
+    podeDelegar: getSelect(p['Pode Delegar']),
+    delegarPara: getRichText(p['Delegar Para']),
+    motivoAtraso: getRichText(p['Motivo do Atraso']),
+    dataReprogramacao: getDate(p['Data de Reprogramação']),
   };
 }
 
@@ -515,6 +523,30 @@ async function createItem(dados) {
   if (dados.urlAta) {
     properties['URL da Ata'] = { url: dados.urlAta };
   }
+  if (dados.objetivoProblema) {
+    properties['Objetivo / Problema'] = { rich_text: buildRichText(dados.objetivoProblema) };
+  }
+  if (dados.situacaoAtual) {
+    properties['Situação Atual'] = { rich_text: buildRichText(dados.situacaoAtual) };
+  }
+  if (dados.situacaoDesejada) {
+    properties['Situação Desejada'] = { rich_text: buildRichText(dados.situacaoDesejada) };
+  }
+  if (dados.oQuePrecisaSerFeito) {
+    properties['O Que Precisa Ser Feito'] = { rich_text: buildRichText(dados.oQuePrecisaSerFeito) };
+  }
+  if (dados.podeDelegar) {
+    properties['Pode Delegar'] = { select: { name: dados.podeDelegar } };
+  }
+  if (dados.delegarPara) {
+    properties['Delegar Para'] = { rich_text: buildRichText(dados.delegarPara) };
+  }
+  if (dados.motivoAtraso) {
+    properties['Motivo do Atraso'] = { rich_text: buildRichText(dados.motivoAtraso) };
+  }
+  if (dados.dataReprogramacao) {
+    properties['Data de Reprogramação'] = { date: { start: dados.dataReprogramacao } };
+  }
 
   const page = await notion.pages.create({
     parent: { database_id: ITENS_DB_ID },
@@ -588,6 +620,32 @@ async function updateItem(itemId, dados) {
   if (dados.emailContatoIds !== undefined) {
     properties['Notificar Email'] = {
       relation: (dados.emailContatoIds || []).map((id) => ({ id })),
+    };
+  }
+  if (dados.objetivoProblema !== undefined) {
+    properties['Objetivo / Problema'] = { rich_text: buildRichText(dados.objetivoProblema) };
+  }
+  if (dados.situacaoAtual !== undefined) {
+    properties['Situação Atual'] = { rich_text: buildRichText(dados.situacaoAtual) };
+  }
+  if (dados.situacaoDesejada !== undefined) {
+    properties['Situação Desejada'] = { rich_text: buildRichText(dados.situacaoDesejada) };
+  }
+  if (dados.oQuePrecisaSerFeito !== undefined) {
+    properties['O Que Precisa Ser Feito'] = { rich_text: buildRichText(dados.oQuePrecisaSerFeito) };
+  }
+  if (dados.podeDelegar !== undefined) {
+    properties['Pode Delegar'] = { select: dados.podeDelegar ? { name: dados.podeDelegar } : null };
+  }
+  if (dados.delegarPara !== undefined) {
+    properties['Delegar Para'] = { rich_text: buildRichText(dados.delegarPara) };
+  }
+  if (dados.motivoAtraso !== undefined) {
+    properties['Motivo do Atraso'] = { rich_text: buildRichText(dados.motivoAtraso) };
+  }
+  if (dados.dataReprogramacao !== undefined) {
+    properties['Data de Reprogramação'] = {
+      date: dados.dataReprogramacao ? { start: dados.dataReprogramacao } : null,
     };
   }
 
@@ -1124,20 +1182,42 @@ async function deleteContatoWhatsapp(contatoId) {
 }
 
 /**
- * Itens com Prazo anterior a "dataReferencia" ("YYYY-MM-DD") e que ainda
- * não estão concluídos nem marcados "Não se aplica".
+ * Itens com prazo efetivo anterior a "dataReferencia" ("YYYY-MM-DD") e que
+ * ainda não estão concluídos nem marcados "Não se aplica".
+ *
+ * "Prazo efetivo" = "Data de Reprogramação" quando preenchida, senão "Prazo"
+ * (mesma regra do prazoEfetivo() do frontend): reprogramar um item adia o
+ * aviso de vencido, sem apagar a data originalmente combinada.
+ *
+ * O filtro é montado como um "or" de dois ramos (e não um "and" com um "or"
+ * dentro) porque a API do Notion aceita no máximo dois níveis de aninhamento
+ * em filtros compostos.
  */
 async function getItensVencidos(dataReferencia) {
+  const naoConcluido = [
+    { property: 'Status', select: { does_not_equal: 'Concluída' } },
+    { property: 'Status', select: { does_not_equal: 'Não se aplica' } },
+  ];
   const results = [];
   let cursor;
   do {
     const response = await notion.databases.query({
       database_id: ITENS_DB_ID,
       filter: {
-        and: [
-          { property: 'Prazo', date: { before: dataReferencia } },
-          { property: 'Status', select: { does_not_equal: 'Concluída' } },
-          { property: 'Status', select: { does_not_equal: 'Não se aplica' } },
+        or: [
+          {
+            and: [
+              ...naoConcluido,
+              { property: 'Data de Reprogramação', date: { is_empty: true } },
+              { property: 'Prazo', date: { before: dataReferencia } },
+            ],
+          },
+          {
+            and: [
+              ...naoConcluido,
+              { property: 'Data de Reprogramação', date: { before: dataReferencia } },
+            ],
+          },
         ],
       },
       page_size: 100,

@@ -16,6 +16,7 @@ import FiltrosItens, { FILTROS_VAZIOS, type FiltrosItensValor } from '../compone
 import { passaFiltroMulti, passaFiltroMultiArray } from '../components/MultiSelectFiltro';
 import { passaFiltroPrazo } from '../components/FiltroPrazo';
 import { RANK_PRIORIDADE } from '../utils/ordenacao';
+import { prazoEfetivo, formatarDataBr, estaAtrasado } from '../utils/prazo';
 import ItemDetailModal from '../components/ItemDetailModal';
 import type { Item } from '../api/types';
 import { PRIORIDADE_OPCOES, STATUS_ITEM_OPCOES } from '../api/types';
@@ -68,7 +69,7 @@ export default function Tabela() {
       .filter((item) => passaFiltroMulti(item.tipo, filtros.tipo))
       .filter((item) => passaFiltroMulti(item.prioridade, filtros.prioridade))
       .filter((item) => passaFiltroMulti(item.responsavel, filtros.responsavel))
-      .filter((item) => passaFiltroPrazo(item.prazo, filtros.prazo))
+      .filter((item) => passaFiltroPrazo(prazoEfetivo(item), filtros.prazo))
       .filter((item) =>
         filtros.busca ? item.titulo.toLowerCase().includes(filtros.busca.toLowerCase()) : true
       );
@@ -149,9 +150,51 @@ export default function Tabela() {
         header: 'Responsável',
         cell: (info) => info.getValue() || '—',
       }),
+      columnHelper.accessor('podeDelegar', {
+        header: 'Delegar',
+        cell: (info) => {
+          const item = info.row.original;
+          const valor = info.getValue();
+          if (!valor) return <span className="text-text-muted">—</span>;
+          return (
+            <span className="text-xs">
+              {valor}
+              {valor === 'Sim' && item.delegarPara ? (
+                <span className="text-text-muted"> · {item.delegarPara}</span>
+              ) : null}
+            </span>
+          );
+        },
+      }),
       columnHelper.accessor('prazo', {
         header: 'Prazo',
-        cell: (info) => info.getValue() || '—',
+        // Ordena pelo prazo efetivo (reprogramação, quando houver), igual ao
+        // resto do app — sem isso a coluna ordenaria pela data já superada.
+        sortingFn: (rowA, rowB) => {
+          const a = prazoEfetivo(rowA.original);
+          const b = prazoEfetivo(rowB.original);
+          if (!a && !b) return 0;
+          if (!a) return 1;
+          if (!b) return -1;
+          return a.localeCompare(b);
+        },
+        cell: (info) => {
+          const item = info.row.original;
+          if (!item.prazo && !item.dataReprogramacao) return '—';
+          const atrasado = estaAtrasado(item);
+          return (
+            <span className={`text-xs ${atrasado ? 'font-semibold text-status-bloqueada' : ''}`}>
+              {item.dataReprogramacao ? (
+                <>
+                  <span className="text-text-muted line-through">{formatarDataBr(item.prazo)}</span>{' '}
+                  → {formatarDataBr(item.dataReprogramacao)}
+                </>
+              ) : (
+                formatarDataBr(item.prazo)
+              )}
+            </span>
+          );
+        },
       }),
       columnHelper.accessor('anotacoesDiarias', {
         header: 'Notas',
