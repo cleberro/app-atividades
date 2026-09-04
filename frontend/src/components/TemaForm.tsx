@@ -68,35 +68,38 @@ export default function TemaForm({ temaEditando, onSucesso, compacto }: TemaForm
   }
 
   return (
-    <form onSubmit={handleSubmit} className={`card flex flex-col gap-3 p-4 ${compacto ? '' : 'max-w-2xl'}`}>
-      <div>
-        <label className="mb-1 block text-xs font-medium text-text-muted">Nome do tema *</label>
-        <input
-          className="input-base w-full"
-          value={nome}
-          onChange={(e) => setNome(e.target.value)}
-          placeholder="Ex.: Segurança da Informação"
-          required
-        />
+    <form onSubmit={handleSubmit} className={`card flex flex-col gap-3 p-4 ${compacto ? '' : 'max-w-[84rem]'}`}>
+      {/* Identificação: nome e categoria na mesma linha. */}
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <div className="sm:col-span-2">
+          <label className="mb-1 block text-xs font-medium text-text-muted">Nome do tema *</label>
+          <input
+            className="input-base w-full"
+            value={nome}
+            onChange={(e) => setNome(e.target.value)}
+            placeholder="Ex.: Segurança da Informação"
+            required
+          />
+        </div>
+        <div>
+          <label className="mb-1 block text-xs font-medium text-text-muted">Categoria</label>
+          <input
+            className="input-base w-full"
+            list="categorias-existentes"
+            value={categoria}
+            onChange={(e) => setCategoria(e.target.value)}
+            placeholder="Reutilize uma existente ou digite uma nova"
+          />
+          <datalist id="categorias-existentes">
+            {categoriasExistentes.map((c) => (
+              <option key={c} value={c} />
+            ))}
+          </datalist>
+        </div>
       </div>
 
-      <div>
-        <label className="mb-1 block text-xs font-medium text-text-muted">Categoria</label>
-        <input
-          className="input-base w-full"
-          list="categorias-existentes"
-          value={categoria}
-          onChange={(e) => setCategoria(e.target.value)}
-          placeholder="Reutilize uma categoria existente ou digite uma nova"
-        />
-        <datalist id="categorias-existentes">
-          {categoriasExistentes.map((c) => (
-            <option key={c} value={c} />
-          ))}
-        </datalist>
-      </div>
-
-      <div className="grid grid-cols-2 gap-3">
+      {/* Classificação: os três campos que definem como o tema aparece nas listas. */}
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         <div>
           <label className="mb-1 block text-xs font-medium text-text-muted">Status</label>
           <select
@@ -125,8 +128,22 @@ export default function TemaForm({ temaEditando, onSucesso, compacto }: TemaForm
             ))}
           </select>
         </div>
+        <div>
+          <label className="mb-1 block text-xs font-medium text-text-muted">
+            Ordem{' '}
+            <span className="font-normal normal-case text-text-muted/70">(em branco = final da lista)</span>
+          </label>
+          <input
+            type="number"
+            className="input-base w-full"
+            value={ordem}
+            onChange={(e) => setOrdem(e.target.value)}
+            placeholder="Automático"
+          />
+        </div>
       </div>
 
+      {/* Texto livre por último — é o campo que cresce. */}
       <div>
         <label className="mb-1 block text-xs font-medium text-text-muted">Descrição</label>
         <textarea
@@ -135,19 +152,6 @@ export default function TemaForm({ temaEditando, onSucesso, compacto }: TemaForm
           value={descricao}
           onChange={(e) => setDescricao(e.target.value)}
           placeholder="Escopo do tema — o que ele cobre"
-        />
-      </div>
-
-      <div>
-        <label className="mb-1 block text-xs font-medium text-text-muted">
-          Ordem <span className="font-normal normal-case text-text-muted/70">(opcional — em branco vai para o final da lista)</span>
-        </label>
-        <input
-          type="number"
-          className="input-base w-full"
-          value={ordem}
-          onChange={(e) => setOrdem(e.target.value)}
-          placeholder="Automático"
         />
       </div>
 

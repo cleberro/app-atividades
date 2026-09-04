@@ -76,33 +76,37 @@ export default function ItemForm({ temaIdFixo, onSucesso, compacto }: ItemFormPr
   }
 
   return (
-    <form onSubmit={handleSubmit} className={`card flex flex-col gap-3 p-4 ${compacto ? '' : 'max-w-2xl'}`}>
-      <div>
-        <label className="mb-1 block text-xs font-medium text-text-muted">Título *</label>
-        <input
-          className="input-base w-full"
-          value={titulo}
-          onChange={(e) => setTitulo(e.target.value)}
-          placeholder="Descreva a ação ou informação"
-          required
-        />
+    <form onSubmit={handleSubmit} className={`card flex flex-col gap-3 p-4 ${compacto ? '' : 'max-w-[84rem]'}`}>
+      {/* Identificação: o que é e a que tema pertence. */}
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <div className={temaIdFixo ? 'sm:col-span-3' : 'sm:col-span-2'}>
+          <label className="mb-1 block text-xs font-medium text-text-muted">Título *</label>
+          <input
+            className="input-base w-full"
+            value={titulo}
+            onChange={(e) => setTitulo(e.target.value)}
+            placeholder="Descreva a ação ou informação"
+            required
+          />
+        </div>
+
+        {!temaIdFixo && (
+          <div>
+            <label className="mb-1 block text-xs font-medium text-text-muted">Tema</label>
+            <select className="input-base w-full" value={temaId} onChange={(e) => setTemaId(e.target.value)}>
+              <option value="">Sem tema</option>
+              {(temas ?? []).map((t) => (
+                <option key={t.id} value={t.id}>
+                  {t.nome}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
       </div>
 
-      {!temaIdFixo && (
-        <div>
-          <label className="mb-1 block text-xs font-medium text-text-muted">Tema</label>
-          <select className="input-base w-full" value={temaId} onChange={(e) => setTemaId(e.target.value)}>
-            <option value="">Sem tema</option>
-            {(temas ?? []).map((t) => (
-              <option key={t.id} value={t.id}>
-                {t.nome}
-              </option>
-            ))}
-          </select>
-        </div>
-      )}
-
-      <div className="grid grid-cols-2 gap-3">
+      {/* Classificação: os três selects que definem como o item é tratado. */}
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         <div>
           <label className="mb-1 block text-xs font-medium text-text-muted">Tipo</label>
           <select className="input-base w-full" value={tipo} onChange={(e) => setTipo(e.target.value as TipoItem)}>
@@ -127,9 +131,6 @@ export default function ItemForm({ temaIdFixo, onSucesso, compacto }: ItemFormPr
             ))}
           </select>
         </div>
-      </div>
-
-      <div className="grid grid-cols-2 gap-3">
         <div>
           <label className="mb-1 block text-xs font-medium text-text-muted">Status</label>
           <select
@@ -144,6 +145,19 @@ export default function ItemForm({ temaIdFixo, onSucesso, compacto }: ItemFormPr
             ))}
           </select>
         </div>
+      </div>
+
+      {/* Execução: quem toca e até quando. */}
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <div className="sm:col-span-2">
+          <label className="mb-1 block text-xs font-medium text-text-muted">Responsável</label>
+          <input
+            className="input-base w-full"
+            value={responsavel}
+            onChange={(e) => setResponsavel(e.target.value)}
+            placeholder="Nome do responsável"
+          />
+        </div>
         <div>
           <label className="mb-1 block text-xs font-medium text-text-muted">Prazo</label>
           <input
@@ -153,16 +167,6 @@ export default function ItemForm({ temaIdFixo, onSucesso, compacto }: ItemFormPr
             onChange={(e) => setPrazo(e.target.value)}
           />
         </div>
-      </div>
-
-      <div>
-        <label className="mb-1 block text-xs font-medium text-text-muted">Responsável</label>
-        <input
-          className="input-base w-full"
-          value={responsavel}
-          onChange={(e) => setResponsavel(e.target.value)}
-          placeholder="Nome do responsável"
-        />
       </div>
 
       <div>
@@ -200,30 +204,33 @@ export default function ItemForm({ temaIdFixo, onSucesso, compacto }: ItemFormPr
                 onChange={(e) => setObjetivoProblema(e.target.value)}
               />
             </div>
-            <div>
-              <label className="mb-1 block text-xs font-medium text-text-muted">Como está hoje</label>
-              <textarea
-                className="input-base w-full"
-                rows={2}
-                placeholder="Situação atual"
-                value={situacaoAtual}
-                onChange={(e) => setSituacaoAtual(e.target.value)}
-              />
-            </div>
-            <div>
-              <label className="mb-1 block text-xs font-medium text-text-muted">Como deveria ser</label>
-              <textarea
-                className="input-base w-full"
-                rows={2}
-                placeholder="Situação desejada"
-                value={situacaoDesejada}
-                onChange={(e) => setSituacaoDesejada(e.target.value)}
-              />
+            {/* "Hoje" e "deveria ser" lado a lado: a comparação é o ponto. */}
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div>
+                <label className="mb-1 block text-xs font-medium text-text-muted">Como está hoje</label>
+                <textarea
+                  className="input-base w-full"
+                  rows={3}
+                  placeholder="Situação atual"
+                  value={situacaoAtual}
+                  onChange={(e) => setSituacaoAtual(e.target.value)}
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-medium text-text-muted">Como deveria ser</label>
+                <textarea
+                  className="input-base w-full"
+                  rows={3}
+                  placeholder="Situação desejada"
+                  value={situacaoDesejada}
+                  onChange={(e) => setSituacaoDesejada(e.target.value)}
+                />
+              </div>
             </div>
 
             <ChecklistSubtarefas valor={oQuePrecisaSerFeito} onChange={setOQuePrecisaSerFeito} />
 
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
               <div>
                 <label className="mb-1 block text-xs font-medium text-text-muted">Posso delegar?</label>
                 <select
@@ -239,7 +246,7 @@ export default function ItemForm({ temaIdFixo, onSucesso, compacto }: ItemFormPr
                   ))}
                 </select>
               </div>
-              <div>
+              <div className="sm:col-span-2">
                 <label className="mb-1 block text-xs font-medium text-text-muted">Delegar para</label>
                 <input
                   className="input-base w-full"

@@ -14,7 +14,7 @@ const links = [
 export default function Nav() {
   return (
     <nav className="sticky top-0 z-20 border-b border-white/5 bg-bg-surface/80 backdrop-blur">
-      <div className="mx-auto flex max-w-6xl items-center gap-1 overflow-x-auto px-4 py-3">
+      <div className="mx-auto flex max-w-[90rem] items-center gap-1 overflow-x-auto px-4 py-3">
         <div className="mr-4 flex items-center gap-2 whitespace-nowrap">
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-accent-primary text-sm font-bold text-white">
             TI

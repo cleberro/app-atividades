@@ -45,29 +45,31 @@ export default function HabitoForm({ onSucesso, compacto }: HabitoFormProps) {
   }
 
   return (
-    <form onSubmit={handleSubmit} className={`card flex flex-col gap-3 p-4 ${compacto ? '' : 'max-w-2xl'}`}>
-      <div>
-        <label className="mb-1 block text-xs font-medium text-text-muted">Título do hábito *</label>
-        <input
-          className="input-base w-full"
-          value={titulo}
-          onChange={(e) => setTitulo(e.target.value)}
-          placeholder="Ex.: Beber água"
-          required
-        />
+    <form onSubmit={handleSubmit} className={`card flex flex-col gap-3 p-4 ${compacto ? '' : 'max-w-[84rem]'}`}>
+      {/* Identificação: título e horário na mesma linha — o horário é curto. */}
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-4">
+        <div className="sm:col-span-3">
+          <label className="mb-1 block text-xs font-medium text-text-muted">Título do hábito *</label>
+          <input
+            className="input-base w-full"
+            value={titulo}
+            onChange={(e) => setTitulo(e.target.value)}
+            placeholder="Ex.: Beber água"
+            required
+          />
+        </div>
+        <div>
+          <label className="mb-1 block text-xs font-medium text-text-muted">Horário</label>
+          <input
+            type="time"
+            className="input-base w-full"
+            value={horario}
+            onChange={(e) => setHorario(e.target.value)}
+          />
+        </div>
       </div>
 
-      <div>
-        <label className="mb-1 block text-xs font-medium text-text-muted">Descrição</label>
-        <textarea
-          className="input-base w-full"
-          rows={2}
-          value={descricao}
-          onChange={(e) => setDescricao(e.target.value)}
-          placeholder="Detalhes opcionais sobre o hábito"
-        />
-      </div>
-
+      {/* Recorrência: os sete dias cabem numa linha só na largura nova. */}
       <div>
         <label className="mb-1 block text-xs font-medium text-text-muted">Dias da semana</label>
         <div className="flex flex-wrap gap-2">
@@ -92,13 +94,15 @@ export default function HabitoForm({ onSucesso, compacto }: HabitoFormProps) {
         </div>
       </div>
 
-      <div className="max-w-[160px]">
-        <label className="mb-1 block text-xs font-medium text-text-muted">Horário</label>
-        <input
-          type="time"
+      {/* Texto livre por último. */}
+      <div>
+        <label className="mb-1 block text-xs font-medium text-text-muted">Descrição</label>
+        <textarea
           className="input-base w-full"
-          value={horario}
-          onChange={(e) => setHorario(e.target.value)}
+          rows={2}
+          value={descricao}
+          onChange={(e) => setDescricao(e.target.value)}
+          placeholder="Detalhes opcionais sobre o hábito"
         />
       </div>
 

@@ -191,7 +191,7 @@ export default function ItemDetailModal({ item, onClose }: ItemDetailModalProps)
       className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/60 p-4 pt-10 backdrop-blur-sm sm:pt-16"
       onClick={onClose}
     >
-      <div className="card w-full max-w-xl p-5" onClick={(e) => e.stopPropagation()}>
+      <div className="card w-full max-w-6xl p-5" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0 flex-1">
             <input
@@ -226,7 +226,7 @@ export default function ItemDetailModal({ item, onClose }: ItemDetailModalProps)
           Priorizar para hoje
         </label>
 
-        <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
           <div>
             <label className="mb-1 block text-xs font-medium text-text-muted">Tema</label>
             <select className="input-base w-full" value={temaId} onChange={(e) => setTemaId(e.target.value)}>
@@ -249,20 +249,6 @@ export default function ItemDetailModal({ item, onClose }: ItemDetailModalProps)
             </select>
           </div>
           <div>
-            <label className="mb-1 block text-xs font-medium text-text-muted">Status</label>
-            <select
-              className="input-base w-full"
-              value={status}
-              onChange={(e) => setStatus(e.target.value as StatusItem)}
-            >
-              {STATUS_ITEM_OPCOES.map((op) => (
-                <option key={op} value={op}>
-                  {op}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div>
             <label className="mb-1 block text-xs font-medium text-text-muted">Prioridade</label>
             <select
               className="input-base w-full"
@@ -270,6 +256,20 @@ export default function ItemDetailModal({ item, onClose }: ItemDetailModalProps)
               onChange={(e) => setPrioridade(e.target.value as Prioridade)}
             >
               {PRIORIDADE_OPCOES.map((op) => (
+                <option key={op} value={op}>
+                  {op}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-medium text-text-muted">Status</label>
+            <select
+              className="input-base w-full"
+              value={status}
+              onChange={(e) => setStatus(e.target.value as StatusItem)}
+            >
+              {STATUS_ITEM_OPCOES.map((op) => (
                 <option key={op} value={op}>
                   {op}
                 </option>
@@ -303,14 +303,42 @@ export default function ItemDetailModal({ item, onClose }: ItemDetailModalProps)
           </div>
         </div>
 
-        <div className="mt-3">
-          <label className="mb-1 block text-xs font-medium text-text-muted">Descrição</label>
-          <textarea
-            className="input-base w-full"
-            rows={4}
-            value={descricao}
-            onChange={(e) => setDescricao(e.target.value)}
-          />
+        {/* Os dois campos de texto livre lado a lado: a descrição (o que é) e
+            as anotações do dia a dia (o que anda acontecendo). */}
+        <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <div>
+            <label className="mb-1 block text-xs font-medium text-text-muted">Descrição</label>
+            <textarea
+              className="input-base w-full"
+              rows={6}
+              value={descricao}
+              onChange={(e) => setDescricao(e.target.value)}
+            />
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-medium text-text-muted">Anotações diárias</label>
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <textarea
+                className="input-base w-full"
+                rows={2}
+                placeholder="O que aconteceu hoje com este item?"
+                value={notaNova}
+                onChange={(e) => setNotaNova(e.target.value)}
+              />
+              <button
+                onClick={handleAdicionarNota}
+                disabled={adicionarNota.isPending || !notaNova.trim()}
+                className="shrink-0 rounded-lg bg-bg-elevated px-4 py-2 text-sm font-medium text-text-primary hover:bg-bg-elevated/70 disabled:cursor-not-allowed disabled:opacity-50 sm:self-start"
+              >
+                {adicionarNota.isPending ? 'Salvando...' : 'Adicionar'}
+              </button>
+            </div>
+            {anotacoes && (
+              <div className="mt-2 max-h-40 overflow-y-auto whitespace-pre-wrap rounded-lg bg-bg-elevated/50 p-3 text-xs text-text-muted">
+                {anotacoes}
+              </div>
+            )}
+          </div>
         </div>
 
         <div className="mt-4 rounded-lg bg-bg-elevated/40 p-3">
@@ -353,7 +381,7 @@ export default function ItemDetailModal({ item, onClose }: ItemDetailModalProps)
 
             <ChecklistSubtarefas valor={oQuePrecisaSerFeito} onChange={setOQuePrecisaSerFeito} />
 
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
               <div>
                 <label className="mb-1 block text-xs font-medium text-text-muted">Posso delegar?</label>
                 <select
@@ -369,7 +397,7 @@ export default function ItemDetailModal({ item, onClose }: ItemDetailModalProps)
                   ))}
                 </select>
               </div>
-              <div>
+              <div className="sm:col-span-2">
                 <label className="mb-1 block text-xs font-medium text-text-muted">Delegar para</label>
                 <input
                   className="input-base w-full"
@@ -420,114 +448,93 @@ export default function ItemDetailModal({ item, onClose }: ItemDetailModalProps)
           </div>
         </div>
 
-        <div className="mt-3">
-          <label className="mb-1 block text-xs font-medium text-text-muted">Anotações diárias</label>
-          <div className="flex flex-col gap-2 sm:flex-row">
-            <textarea
-              className="input-base w-full"
-              rows={2}
-              placeholder="O que aconteceu hoje com este item?"
-              value={notaNova}
-              onChange={(e) => setNotaNova(e.target.value)}
-            />
-            <button
-              onClick={handleAdicionarNota}
-              disabled={adicionarNota.isPending || !notaNova.trim()}
-              className="shrink-0 rounded-lg bg-bg-elevated px-4 py-2 text-sm font-medium text-text-primary hover:bg-bg-elevated/70 disabled:cursor-not-allowed disabled:opacity-50 sm:self-start"
-            >
-              {adicionarNota.isPending ? 'Salvando...' : 'Adicionar'}
-            </button>
-          </div>
-          {anotacoes && (
-            <div className="mt-2 max-h-40 overflow-y-auto whitespace-pre-wrap rounded-lg bg-bg-elevated/50 p-3 text-xs text-text-muted">
-              {anotacoes}
-            </div>
-          )}
-        </div>
-
-        <div className="mt-3">
-          <div className="mb-1 flex items-center justify-between">
-            <label className="block text-xs font-medium text-text-muted">
-              Notificar por WhatsApp quando vencer o prazo
-            </label>
-            <Link to="/contatos" className="text-xs text-accent-secondary hover:underline">
-              gerenciar contatos →
-            </Link>
-          </div>
-          {(contatosWhatsapp ?? []).length === 0 ? (
-            <p className="text-xs text-text-muted">
-              Nenhum contato cadastrado ainda —{' '}
-              <Link to="/contatos" className="text-accent-secondary hover:underline">
-                cadastre um
+        {/* WhatsApp e e-mail lado a lado: são a mesma decisão ("quem avisar"),
+            só que por canais diferentes. */}
+        <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <div>
+              <div className="mb-1 flex items-center justify-between">
+              <label className="block text-xs font-medium text-text-muted">
+                Notificar por WhatsApp quando vencer o prazo
+              </label>
+              <Link to="/contatos" className="text-xs text-accent-secondary hover:underline">
+                gerenciar contatos →
               </Link>
-              .
-            </p>
-          ) : (
-            <div className="flex flex-wrap gap-2">
-              {(contatosWhatsapp ?? []).map((contato) => {
-                const selecionado = whatsappContatoIds.includes(contato.id);
-                return (
-                  <button
-                    type="button"
-                    key={contato.id}
-                    onClick={() => alternarContatoWhatsapp(contato.id)}
-                    aria-pressed={selecionado}
-                    className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
-                      selecionado
-                        ? 'bg-accent-primary text-white'
-                        : 'bg-bg-elevated text-text-muted hover:text-text-primary'
-                    } ${contato.ativo ? '' : 'opacity-50'}`}
-                  >
-                    {contato.nome}
-                    {!contato.ativo && ' (inativo)'}
-                  </button>
-                );
-              })}
             </div>
-          )}
-        </div>
-
-        <div className="mt-3">
-          <div className="mb-1 flex items-center justify-between">
-            <label className="block text-xs font-medium text-text-muted">Notificar por E-mail quando vencer o prazo</label>
-            <Link to="/contatos" className="text-xs text-accent-secondary hover:underline">
-              gerenciar contatos →
-            </Link>
+            {(contatosWhatsapp ?? []).length === 0 ? (
+              <p className="text-xs text-text-muted">
+                Nenhum contato cadastrado ainda —{' '}
+                <Link to="/contatos" className="text-accent-secondary hover:underline">
+                  cadastre um
+                </Link>
+                .
+              </p>
+            ) : (
+              <div className="flex flex-wrap gap-2">
+                {(contatosWhatsapp ?? []).map((contato) => {
+                  const selecionado = whatsappContatoIds.includes(contato.id);
+                  return (
+                    <button
+                      type="button"
+                      key={contato.id}
+                      onClick={() => alternarContatoWhatsapp(contato.id)}
+                      aria-pressed={selecionado}
+                      className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
+                        selecionado
+                          ? 'bg-accent-primary text-white'
+                          : 'bg-bg-elevated text-text-muted hover:text-text-primary'
+                      } ${contato.ativo ? '' : 'opacity-50'}`}
+                    >
+                      {contato.nome}
+                      {!contato.ativo && ' (inativo)'}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
           </div>
-          {(contatosEmail ?? []).length === 0 ? (
-            <p className="text-xs text-text-muted">
-              Nenhum contato cadastrado ainda —{' '}
-              <Link to="/contatos" className="text-accent-secondary hover:underline">
-                cadastre um
+
+          <div>
+              <div className="mb-1 flex items-center justify-between">
+              <label className="block text-xs font-medium text-text-muted">Notificar por E-mail quando vencer o prazo</label>
+              <Link to="/contatos" className="text-xs text-accent-secondary hover:underline">
+                gerenciar contatos →
               </Link>
-              .
-            </p>
-          ) : (
-            <div className="flex flex-wrap gap-2">
-              {(contatosEmail ?? []).map((contato) => {
-                const selecionado = emailContatoIds.includes(contato.id);
-                return (
-                  <button
-                    type="button"
-                    key={contato.id}
-                    onClick={() => alternarContatoEmail(contato.id)}
-                    aria-pressed={selecionado}
-                    className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
-                      selecionado
-                        ? 'bg-accent-primary text-white'
-                        : 'bg-bg-elevated text-text-muted hover:text-text-primary'
-                    } ${contato.ativo ? '' : 'opacity-50'}`}
-                  >
-                    {contato.nome}
-                    {!contato.ativo && ' (inativo)'}
-                  </button>
-                );
-              })}
             </div>
-          )}
+            {(contatosEmail ?? []).length === 0 ? (
+              <p className="text-xs text-text-muted">
+                Nenhum contato cadastrado ainda —{' '}
+                <Link to="/contatos" className="text-accent-secondary hover:underline">
+                  cadastre um
+                </Link>
+                .
+              </p>
+            ) : (
+              <div className="flex flex-wrap gap-2">
+                {(contatosEmail ?? []).map((contato) => {
+                  const selecionado = emailContatoIds.includes(contato.id);
+                  return (
+                    <button
+                      type="button"
+                      key={contato.id}
+                      onClick={() => alternarContatoEmail(contato.id)}
+                      aria-pressed={selecionado}
+                      className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
+                        selecionado
+                          ? 'bg-accent-primary text-white'
+                          : 'bg-bg-elevated text-text-muted hover:text-text-primary'
+                      } ${contato.ativo ? '' : 'opacity-50'}`}
+                    >
+                      {contato.nome}
+                      {!contato.ativo && ' (inativo)'}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
         </div>
 
-        <div className="mt-4 grid grid-cols-1 gap-2 rounded-lg bg-bg-elevated/50 p-3 text-xs text-text-muted sm:grid-cols-2">
+        <div className="mt-4 grid grid-cols-1 gap-2 rounded-lg bg-bg-elevated/50 p-3 text-xs text-text-muted sm:grid-cols-4">
           <p>
             <span className="font-medium text-text-primary">Reunião de origem:</span>{' '}
             {item.reuniaoOrigem || '—'}

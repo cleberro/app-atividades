@@ -100,11 +100,11 @@ export default function ContatosWhatsappSection() {
         </p>
       </div>
 
-      <form onSubmit={handleSubmit} className="card flex flex-col gap-3 p-4 sm:max-w-xl">
+      <form onSubmit={handleSubmit} className="card flex flex-col gap-3 p-4 sm:max-w-6xl">
         {contatoEditando && (
           <p className="text-xs font-medium text-accent-secondary">Editando "{contatoEditando.nome}"</p>
         )}
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
           <div>
             <label className="mb-1 block text-xs font-medium text-text-muted">Nome *</label>
             <input
@@ -127,16 +127,16 @@ export default function ContatosWhatsappSection() {
               required
             />
           </div>
-        </div>
-        <div>
-          <label className="mb-1 block text-xs font-medium text-text-muted">ApiKey do CallMeBot *</label>
-          <input
-            className="input-base w-full"
-            value={apiKeyCallMeBot}
-            onChange={(e) => setApiKeyCallMeBot(e.target.value)}
-            placeholder="Recebida por WhatsApp após o passo a passo acima"
-            required
-          />
+          <div>
+            <label className="mb-1 block text-xs font-medium text-text-muted">ApiKey do CallMeBot *</label>
+            <input
+              className="input-base w-full"
+              value={apiKeyCallMeBot}
+              onChange={(e) => setApiKeyCallMeBot(e.target.value)}
+              placeholder="Recebida por WhatsApp após o passo a passo"
+              required
+            />
+          </div>
         </div>
         <div className="flex items-center gap-2">
           <button
@@ -166,7 +166,7 @@ export default function ContatosWhatsappSection() {
       ) : (data ?? []).length === 0 ? (
         <Vazio texto="Nenhum contato cadastrado ainda." />
       ) : (
-        <ul className="flex flex-col gap-2 sm:max-w-xl">
+        <ul className="flex flex-col gap-2 sm:max-w-6xl">
           {(data ?? []).map((contato) => (
             <li key={contato.id} className="card flex flex-wrap items-center justify-between gap-2 p-3">
               <div className={contato.ativo ? '' : 'text-text-muted line-through'}>

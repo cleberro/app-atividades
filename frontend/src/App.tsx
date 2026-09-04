@@ -14,7 +14,7 @@ export default function App() {
   return (
     <div className="min-h-screen bg-bg-base text-text-primary">
       <Nav />
-      <main className="mx-auto max-w-6xl px-4 py-6">
+      <main className="mx-auto max-w-[90rem] px-4 py-6">
         <Routes>
           <Route path="/" element={<Hoje />} />
           <Route path="/tabela" element={<Tabela />} />

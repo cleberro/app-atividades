@@ -54,19 +54,19 @@ export default function RotinaForm({ rotinaEditando, onSucesso, compacto }: Roti
   }
 
   return (
-    <form onSubmit={handleSubmit} className={`card flex flex-col gap-3 p-4 ${compacto ? '' : 'max-w-2xl'}`}>
-      <div>
-        <label className="mb-1 block text-xs font-medium text-text-muted">Nome da rotina *</label>
-        <input
-          className="input-base w-full"
-          value={nome}
-          onChange={(e) => setNome(e.target.value)}
-          placeholder="Ex.: Estudar inglês"
-          required
-        />
-      </div>
-
-      <div className="grid grid-cols-3 gap-3">
+    <form onSubmit={handleSubmit} className={`card flex flex-col gap-3 p-4 ${compacto ? '' : 'max-w-[84rem]'}`}>
+      {/* Na largura nova os quatro campos da rotina cabem numa linha só. */}
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-5">
+        <div className="sm:col-span-2">
+          <label className="mb-1 block text-xs font-medium text-text-muted">Nome da rotina *</label>
+          <input
+            className="input-base w-full"
+            value={nome}
+            onChange={(e) => setNome(e.target.value)}
+            placeholder="Ex.: Estudar inglês"
+            required
+          />
+        </div>
         <div>
           <label className="mb-1 block text-xs font-medium text-text-muted">Recorrência</label>
           <select

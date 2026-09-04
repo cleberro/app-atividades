@@ -77,7 +77,7 @@ export default function ContatosEmailSection() {
         </p>
       </div>
 
-      <form onSubmit={handleSubmit} className="card flex flex-col gap-3 p-4 sm:max-w-xl">
+      <form onSubmit={handleSubmit} className="card flex flex-col gap-3 p-4 sm:max-w-6xl">
         {contatoEditando && (
           <p className="text-xs font-medium text-accent-secondary">Editando "{contatoEditando.nome}"</p>
         )}
@@ -132,7 +132,7 @@ export default function ContatosEmailSection() {
       ) : (data ?? []).length === 0 ? (
         <Vazio texto="Nenhum contato cadastrado ainda." />
       ) : (
-        <ul className="flex flex-col gap-2 sm:max-w-xl">
+        <ul className="flex flex-col gap-2 sm:max-w-6xl">
           {(data ?? []).map((contato) => (
             <li key={contato.id} className="card flex flex-wrap items-center justify-between gap-2 p-3">
               <div className={contato.ativo ? '' : 'text-text-muted line-through'}>
