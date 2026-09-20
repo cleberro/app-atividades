@@ -1,5 +1,11 @@
 import type { Tema } from '../api/types';
-import { PRIORIDADE_OPCOES, STATUS_ITEM_OPCOES, TIPO_OPCOES } from '../api/types';
+import {
+  CLASSE_KOZO_OPCOES,
+  PRIORIDADE_OPCOES,
+  STATUS_ITEM_OPCOES,
+  TEMPO_ESTIMADO_OPCOES,
+  TIPO_OPCOES,
+} from '../api/types';
 import MultiSelectFiltro, { FILTRO_MULTI_VAZIO, type FiltroMultiValor } from './MultiSelectFiltro';
 import FiltroPrazo, { FILTRO_PRAZO_VAZIO, type FiltroPrazoValor } from './FiltroPrazo';
 
@@ -9,6 +15,8 @@ export interface FiltrosItensValor {
   tipo: FiltroMultiValor;
   prioridade: FiltroMultiValor;
   responsavel: FiltroMultiValor;
+  classeKozo: FiltroMultiValor;
+  tempoEstimado: FiltroMultiValor;
   prazo: FiltroPrazoValor;
   busca: string;
 }
@@ -19,6 +27,8 @@ export const FILTROS_VAZIOS: FiltrosItensValor = {
   tipo: { ...FILTRO_MULTI_VAZIO },
   prioridade: { ...FILTRO_MULTI_VAZIO },
   responsavel: { ...FILTRO_MULTI_VAZIO },
+  classeKozo: { ...FILTRO_MULTI_VAZIO },
+  tempoEstimado: { ...FILTRO_MULTI_VAZIO },
   prazo: { ...FILTRO_PRAZO_VAZIO },
   busca: '',
 };
@@ -33,6 +43,8 @@ interface FiltrosItensProps {
   mostrarTipo?: boolean;
   mostrarPrioridade?: boolean;
   mostrarResponsavel?: boolean;
+  mostrarClasseKozo?: boolean;
+  mostrarTempoEstimado?: boolean;
   mostrarPrazo?: boolean;
   mostrarBusca?: boolean;
   buscaPlaceholder?: string;
@@ -57,21 +69,30 @@ export default function FiltrosItens({
   mostrarTipo = true,
   mostrarPrioridade = true,
   mostrarResponsavel = true,
+  mostrarClasseKozo = true,
+  mostrarTempoEstimado = true,
   mostrarPrazo = true,
   mostrarBusca = true,
   buscaPlaceholder = 'Buscar por título...',
 }: FiltrosItensProps) {
+  // Filtros de telas que persistem o valor (sessionStorage) podem ter sido
+  // salvos antes de um filtro novo existir; o merge com FILTROS_VAZIOS evita
+  // que um valor antigo, sem a chave nova, quebre a barra de filtros.
+  const valorCompleto: FiltrosItensValor = { ...FILTROS_VAZIOS, ...valor };
+
   const temFiltroAtivo =
-    !!valor.busca ||
-    valor.tema.valores.length > 0 ||
-    valor.status.valores.length > 0 ||
-    valor.tipo.valores.length > 0 ||
-    valor.prioridade.valores.length > 0 ||
-    valor.responsavel.valores.length > 0 ||
-    !!(valor.prazo.de || valor.prazo.ate);
+    !!valorCompleto.busca ||
+    valorCompleto.tema.valores.length > 0 ||
+    valorCompleto.status.valores.length > 0 ||
+    valorCompleto.tipo.valores.length > 0 ||
+    valorCompleto.prioridade.valores.length > 0 ||
+    valorCompleto.responsavel.valores.length > 0 ||
+    valorCompleto.classeKozo.valores.length > 0 ||
+    valorCompleto.tempoEstimado.valores.length > 0 ||
+    !!(valorCompleto.prazo.de || valorCompleto.prazo.ate);
 
   function set<K extends keyof FiltrosItensValor>(campo: K, v: FiltrosItensValor[K]) {
-    onChange({ ...valor, [campo]: v });
+    onChange({ ...valorCompleto, [campo]: v });
   }
 
   return (
@@ -80,7 +101,7 @@ export default function FiltrosItens({
         <input
           className="input-base min-w-[180px] flex-1"
           placeholder={buscaPlaceholder}
-          value={valor.busca}
+          value={valorCompleto.busca}
           onChange={(e) => set('busca', e.target.value)}
         />
       )}
@@ -88,7 +109,7 @@ export default function FiltrosItens({
         <MultiSelectFiltro
           label="Tema"
           opcoes={temas.map((t) => ({ value: t.id, label: t.nome }))}
-          valor={valor.tema}
+          valor={valorCompleto.tema}
           onChange={(v) => set('tema', v)}
         />
       )}
@@ -96,7 +117,7 @@ export default function FiltrosItens({
         <MultiSelectFiltro
           label="Status"
           opcoes={STATUS_ITEM_OPCOES.map((op) => ({ value: op, label: op }))}
-          valor={valor.status}
+          valor={valorCompleto.status}
           onChange={(v) => set('status', v)}
         />
       )}
@@ -104,7 +125,7 @@ export default function FiltrosItens({
         <MultiSelectFiltro
           label="Tipo"
           opcoes={TIPO_OPCOES.map((op) => ({ value: op, label: op }))}
-          valor={valor.tipo}
+          valor={valorCompleto.tipo}
           onChange={(v) => set('tipo', v)}
         />
       )}
@@ -112,7 +133,7 @@ export default function FiltrosItens({
         <MultiSelectFiltro
           label="Prioridade"
           opcoes={PRIORIDADE_OPCOES.map((op) => ({ value: op, label: op }))}
-          valor={valor.prioridade}
+          valor={valorCompleto.prioridade}
           onChange={(v) => set('prioridade', v)}
         />
       )}
@@ -120,11 +141,27 @@ export default function FiltrosItens({
         <MultiSelectFiltro
           label="Responsável"
           opcoes={responsaveis.map((r) => ({ value: r, label: r }))}
-          valor={valor.responsavel}
+          valor={valorCompleto.responsavel}
           onChange={(v) => set('responsavel', v)}
         />
       )}
-      {mostrarPrazo && <FiltroPrazo valor={valor.prazo} onChange={(v) => set('prazo', v)} />}
+      {mostrarClasseKozo && (
+        <MultiSelectFiltro
+          label="Classe KOZO"
+          opcoes={CLASSE_KOZO_OPCOES.map((op) => ({ value: op, label: op }))}
+          valor={valorCompleto.classeKozo}
+          onChange={(v) => set('classeKozo', v)}
+        />
+      )}
+      {mostrarTempoEstimado && (
+        <MultiSelectFiltro
+          label="Tempo est."
+          opcoes={TEMPO_ESTIMADO_OPCOES.map((op) => ({ value: op, label: op }))}
+          valor={valorCompleto.tempoEstimado}
+          onChange={(v) => set('tempoEstimado', v)}
+        />
+      )}
+      {mostrarPrazo && <FiltroPrazo valor={valorCompleto.prazo} onChange={(v) => set('prazo', v)} />}
       {temFiltroAtivo && (
         <button
           onClick={() => onChange(FILTROS_VAZIOS)}

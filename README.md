@@ -123,7 +123,7 @@ completamente — isso é uma limitação do navegador, não do código.
 | GET    | `/api/temas`                       | Lista os 12 temas + contagem de itens pendentes por tema |
 | PATCH  | `/api/temas/:id/foco`              | Alterna "Foco da Semana" de um tema                       |
 | DELETE | `/api/temas/:id`                   | Exclui (arquiva no Notion) um tema — recusado com 409 se ainda houver itens vinculados |
-| GET    | `/api/itens`                       | Lista itens (filtros: `tema`, `status`, `tipo`, `prioridade`, `q`) |
+| GET    | `/api/itens`                       | Lista itens (filtros: `tema`, `status`, `tipo`, `prioridade`, `classeKozo`, `tempoEstimado`, `q`) |
 | POST   | `/api/itens`                       | Cria um novo item (Origem = "App")                        |
 | PATCH  | `/api/itens/:id`                   | Atualiza status/prioridade/responsável/prazo/etc.        |
 | DELETE | `/api/itens/:id`                   | Exclui (arquiva no Notion) um item                        |
@@ -174,6 +174,7 @@ Lixeira do workspace, de onde pode ser restaurada) — não existe exclusão per
 |---------------|------------------------------------------------------------------------|
 | `/`           | **Hoje** — temas em foco, itens priorizados para hoje, criação rápida  |
 | `/tabela`     | **Tabela** — grid com TanStack Table: ordenar, filtrar, agrupar por tema, edição inline |
+| `/visoes`     | **Visões** — as quatro visões do método KOZO (Núcleo, Fluxo, Interface e Hoje) |
 | `/kanban`     | **Kanban** — colunas por Status, arrastar e soltar (dnd-kit) atualiza o Status |
 | `/temas`      | **Temas** — um card por tema, contadores e toggle "Focar esta semana" |
 | `/temas/:id`  | **Detalhe do tema** — itens do tema + formulário de novo item          |
@@ -289,6 +290,53 @@ reprogramação) e a listagem de itens do Tema. Um item atrasado (prazo efetivo 
 diferente de Concluída/Não se aplica) destaca em vermelho o bloco "Atraso e reprogramação" no
 popup. As mensagens de WhatsApp e e-mail ganham a linha "🔁 Reprogramado para: ..." quando o campo
 está preenchido, e o "venceu há N dia(s)" passa a contar a partir do prazo efetivo.
+
+### Classe KOZO, tempo estimado e a tela de Visões
+
+Dois campos classificam o item pelo método KOZO, e são eles que alimentam a tela `/visoes`:
+
+| Campo no app | Propriedade no Notion | Tipo |
+| --- | --- | --- |
+| Classe KOZO | `Classe KOZO` | Select: Projeto / Tarefa / Comunicação / Híbrido (decompor) |
+| Tempo estimado | `Tempo estimado` | Select: 00:15 / 00:30 / 01:00 / 02:00 / 03:00 / 04:00 |
+
+As duas são criadas pelo mesmo script idempotente das demais
+(`backend/scripts/adicionar-campos-itens.js`). "Tempo estimado" é Select (e não número) porque no
+Notion ele já foi criado como faixas fixas de esforço no formato `HH:MM`; o app converte para
+minutos apenas para somar o esforço de uma lista (`minutosDeTempoEstimado()` em
+`frontend/src/utils/tempo.ts`).
+
+Onde os dois campos aparecem:
+
+- **Novo item** (`/novo`, e o formulário dentro do Tema): selects "Classe KOZO" (com a visão
+  correspondente na legenda — "Projeto — Núcleo") e "Tempo estimado".
+- **Popup do item**: os mesmos selects, mais os pills de classe e de tempo no cabeçalho.
+- **Tabela** (`/tabela`): coluna "Classe KOZO" editável inline (igual a Status/Prioridade) e coluna
+  "Tempo est." (que ordena por duração, não pelo texto), além do total de esforço estimado dos
+  itens filtrados no subtítulo.
+- **Filtros** (Tabela, Kanban, Detalhe do Tema e Visões): dois filtros novos, "Classe KOZO" e
+  "Tempo est.".
+- **Kanban** e **Detalhe do Tema**: pills de classe e tempo no cartão/linha do item.
+
+A tela **Visões** (`/visoes`) reproduz, dentro do app, as quatro views de mesmo nome que existem na
+database do Notion — mesmo filtro, mesmas colunas e mesma ordenação:
+
+| Aba | Filtro | Colunas | Ordenação |
+| --- | --- | --- | --- |
+| Núcleo (Projetos) | Classe KOZO = Projeto | Título, Tema, Status, Prioridade, Prazo, Tempo est., Como está hoje, O que precisa ser feito | Prazo |
+| Fluxo (Tarefas) | Classe KOZO = Tarefa | Título, Tema, Status, Prioridade, Prazo, Tempo est., Pode delegar, Delegar para | Prazo |
+| Interface (Comunicação) | Classe KOZO = Comunicação | Título, Tema, Status, Prioridade, Prazo, Responsável, Delegar para | Prazo |
+| Hoje (máx. 5) | Priorizado Hoje | Título, Classe KOZO, Ordem, Tempo est., Prazo, Prioridade, Status | Ordem definida na tela Hoje |
+
+Detalhes que o app acrescenta às views do Notion:
+
+- A ordenação por prazo usa o **prazo efetivo** (reprogramação quando houver), como no resto do app.
+- A visão **Hoje** respeita o limite de 5 do método: os cinco primeiros ficam na tabela principal e
+  o excedente vai para um bloco "Acima do limite de 5", com um aviso — nada some da fila. A ordem é
+  a mesma da tela Hoje (arrastar e soltar lá reordena aqui), e só vale se tiver sido definida hoje.
+- Cada visão mostra a **soma do tempo estimado** dos itens exibidos.
+- Itens sem Classe KOZO ou marcados como "Híbrido (decompor)" não aparecem em nenhuma das três
+  visões de classe — por isso a tela avisa quantos são, para que sejam classificados ou decompostos.
 
 ## 8. Notas e decisões de implementação
 

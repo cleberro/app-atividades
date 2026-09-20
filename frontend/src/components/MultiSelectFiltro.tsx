@@ -12,16 +12,26 @@ export interface OpcaoFiltro {
   label: string;
 }
 
-/** Testa se um valor único (ex.: status de um item) passa no filtro. */
-export function passaFiltroMulti(valorItem: string | null | undefined, filtro: FiltroMultiValor): boolean {
-  if (filtro.valores.length === 0) return true;
+/**
+ * Testa se um valor único (ex.: status de um item) passa no filtro. Aceita
+ * filtro indefinido (estado salvo antes de o filtro existir) como "sem
+ * filtro", em vez de quebrar a tela.
+ */
+export function passaFiltroMulti(
+  valorItem: string | null | undefined,
+  filtro: FiltroMultiValor | undefined
+): boolean {
+  if (!filtro || filtro.valores.length === 0) return true;
   const contido = valorItem != null && filtro.valores.includes(valorItem);
   return filtro.modo === 'incluir' ? contido : !contido;
 }
 
 /** Testa se algum valor de uma relação (ex.: temaIds de um item) passa no filtro. */
-export function passaFiltroMultiArray(valoresItem: string[], filtro: FiltroMultiValor): boolean {
-  if (filtro.valores.length === 0) return true;
+export function passaFiltroMultiArray(
+  valoresItem: string[],
+  filtro: FiltroMultiValor | undefined
+): boolean {
+  if (!filtro || filtro.valores.length === 0) return true;
   const contido = valoresItem.some((v) => filtro.valores.includes(v));
   return filtro.modo === 'incluir' ? contido : !contido;
 }

@@ -1,8 +1,24 @@
 import { useState, FormEvent } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../api/client';
-import type { NovoItemPayload, PodeDelegar, Prioridade, StatusItem, TipoItem } from '../api/types';
-import { PODE_DELEGAR_OPCOES, PRIORIDADE_OPCOES, STATUS_ITEM_OPCOES, TIPO_OPCOES } from '../api/types';
+import type {
+  ClasseKozo,
+  NovoItemPayload,
+  PodeDelegar,
+  Prioridade,
+  StatusItem,
+  TempoEstimado,
+  TipoItem,
+} from '../api/types';
+import {
+  CLASSE_KOZO_OPCOES,
+  LEGENDA_CLASSE_KOZO,
+  PODE_DELEGAR_OPCOES,
+  PRIORIDADE_OPCOES,
+  STATUS_ITEM_OPCOES,
+  TEMPO_ESTIMADO_OPCOES,
+  TIPO_OPCOES,
+} from '../api/types';
 import ChecklistSubtarefas from './ChecklistSubtarefas';
 
 interface ItemFormProps {
@@ -23,6 +39,8 @@ export default function ItemForm({ temaIdFixo, onSucesso, compacto }: ItemFormPr
   const [status, setStatus] = useState<StatusItem | ''>('Pendente');
   const [prioridade, setPrioridade] = useState<Prioridade | ''>('Média');
   const [prazo, setPrazo] = useState('');
+  const [classeKozo, setClasseKozo] = useState<ClasseKozo | ''>('');
+  const [tempoEstimado, setTempoEstimado] = useState<TempoEstimado | ''>('');
 
   // Detalhamento: fica recolhido por padrão para o cadastro rápido continuar
   // rápido — quem quer estruturar o item (objetivo, situação, plano) abre.
@@ -44,6 +62,8 @@ export default function ItemForm({ temaIdFixo, onSucesso, compacto }: ItemFormPr
       setDescricao('');
       setResponsavel('');
       setPrazo('');
+      setClasseKozo('');
+      setTempoEstimado('');
       setObjetivoProblema('');
       setSituacaoAtual('');
       setSituacaoDesejada('');
@@ -66,6 +86,8 @@ export default function ItemForm({ temaIdFixo, onSucesso, compacto }: ItemFormPr
       status: (status || undefined) as StatusItem | undefined,
       prioridade: (prioridade || undefined) as Prioridade | undefined,
       prazo: prazo || undefined,
+      classeKozo: (classeKozo || undefined) as ClasseKozo | undefined,
+      tempoEstimado: (tempoEstimado || undefined) as TempoEstimado | undefined,
       objetivoProblema: objetivoProblema || undefined,
       situacaoAtual: situacaoAtual || undefined,
       situacaoDesejada: situacaoDesejada || undefined,
@@ -139,6 +161,42 @@ export default function ItemForm({ temaIdFixo, onSucesso, compacto }: ItemFormPr
             onChange={(e) => setStatus(e.target.value as StatusItem)}
           >
             {STATUS_ITEM_OPCOES.map((op) => (
+              <option key={op} value={op}>
+                {op}
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
+
+      {/* Classificação KOZO: a natureza do item (que define em qual visão ele
+          aparece) e o esforço estimado. */}
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <div className="sm:col-span-2">
+          <label className="mb-1 block text-xs font-medium text-text-muted">Classe KOZO</label>
+          <select
+            className="input-base w-full"
+            value={classeKozo}
+            onChange={(e) => setClasseKozo(e.target.value as ClasseKozo | '')}
+          >
+            <option value="">Não classificado</option>
+            {CLASSE_KOZO_OPCOES.map((op) => (
+              <option key={op} value={op}>
+                {op}
+                {LEGENDA_CLASSE_KOZO[op] ? ` — ${LEGENDA_CLASSE_KOZO[op]}` : ''}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label className="mb-1 block text-xs font-medium text-text-muted">Tempo estimado</label>
+          <select
+            className="input-base w-full"
+            value={tempoEstimado}
+            onChange={(e) => setTempoEstimado(e.target.value as TempoEstimado | '')}
+          >
+            <option value="">Não estimado</option>
+            {TEMPO_ESTIMADO_OPCOES.map((op) => (
               <option key={op} value={op}>
                 {op}
               </option>

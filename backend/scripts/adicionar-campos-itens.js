@@ -4,7 +4,8 @@
  * Migracao de schema da database "Itens - Acoes e Informacoes" do Notion.
  *
  * Cria as propriedades de detalhamento do item (objetivo, situacao atual,
- * situacao desejada, plano de acao, delegacao) e as de atraso/reprogramacao.
+ * situacao desejada, plano de acao, delegacao), as de atraso/reprogramacao
+ * e as da classificacao KOZO (Classe KOZO e Tempo estimado).
  * NAO cria a database nem altera dados existentes - apenas acrescenta as
  * propriedades que ainda nao existirem.
  *
@@ -41,6 +42,32 @@ const PROPRIEDADES = {
   'Delegar Para': { rich_text: {} },
   'Motivo do Atraso': { rich_text: {} },
   'Data de Reprogramação': { date: {} },
+  // Classificação KOZO: Projeto (Núcleo), Tarefa (Fluxo), Comunicação
+  // (Interface) e Híbrido, que é o item que ainda precisa ser decomposto.
+  'Classe KOZO': {
+    select: {
+      options: [
+        { name: 'Projeto', color: 'blue' },
+        { name: 'Tarefa', color: 'gray' },
+        { name: 'Comunicação', color: 'green' },
+        { name: 'Híbrido (decompor)', color: 'orange' },
+      ],
+    },
+  },
+  // Select (e não number) de propósito: são faixas fixas de esforço no
+  // formato HH:MM, do jeito que já foram criadas no Notion.
+  'Tempo estimado': {
+    select: {
+      options: [
+        { name: '00:15', color: 'green' },
+        { name: '00:30', color: 'green' },
+        { name: '01:00', color: 'blue' },
+        { name: '02:00', color: 'blue' },
+        { name: '03:00', color: 'purple' },
+        { name: '04:00', color: 'purple' },
+      ],
+    },
+  },
 };
 
 async function main() {

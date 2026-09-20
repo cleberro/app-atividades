@@ -2,6 +2,7 @@ import { Route, Routes } from 'react-router-dom';
 import Nav from './components/Nav';
 import Hoje from './pages/Hoje';
 import Tabela from './pages/Tabela';
+import Visoes from './pages/Visoes';
 import Kanban from './pages/Kanban';
 import Temas from './pages/Temas';
 import TemaDetail from './pages/TemaDetail';
@@ -18,6 +19,7 @@ export default function App() {
         <Routes>
           <Route path="/" element={<Hoje />} />
           <Route path="/tabela" element={<Tabela />} />
+          <Route path="/visoes" element={<Visoes />} />
           <Route path="/kanban" element={<Kanban />} />
           <Route path="/temas" element={<Temas />} />
           <Route path="/temas/:id" element={<TemaDetail />} />

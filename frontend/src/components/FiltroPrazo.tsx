@@ -12,8 +12,11 @@ export const FILTRO_PRAZO_VAZIO: FiltroPrazoValor = { de: '', ate: '' };
  * Quem chama passa o prazo efetivo (ver utils/prazo.ts), para que um item
  * reprogramado seja filtrado pela data nova.
  */
-export function passaFiltroPrazo(prazo: string | null | undefined, filtro: FiltroPrazoValor): boolean {
-  if (!filtro.de && !filtro.ate) return true;
+export function passaFiltroPrazo(
+  prazo: string | null | undefined,
+  filtro: FiltroPrazoValor | undefined
+): boolean {
+  if (!filtro || (!filtro.de && !filtro.ate)) return true;
   if (!prazo) return false;
   if (filtro.de && prazo < filtro.de) return false;
   if (filtro.ate && prazo > filtro.ate) return false;

@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { api } from '../api/client';
 import { Carregando, Erro, Vazio } from '../components/Estado';
-import { PrioridadePill, StatusPill } from '../components/Pills';
+import { ClasseKozoPill, PrioridadePill, StatusPill } from '../components/Pills';
 import ItemForm from '../components/ItemForm';
 import TemaForm from '../components/TemaForm';
 import FiltrosItens, { FILTROS_VAZIOS, type FiltrosItensValor } from '../components/FiltrosItens';
@@ -106,6 +106,8 @@ export default function TemaDetail() {
       .filter((item) => passaFiltroMulti(item.tipo, filtros.tipo))
       .filter((item) => passaFiltroMulti(item.prioridade, filtros.prioridade))
       .filter((item) => passaFiltroMulti(item.responsavel, filtros.responsavel))
+      .filter((item) => passaFiltroMulti(item.classeKozo, filtros.classeKozo))
+      .filter((item) => passaFiltroMulti(item.tempoEstimado, filtros.tempoEstimado))
       .filter((item) => passaFiltroPrazo(prazoEfetivo(item), filtros.prazo))
       .filter((item) =>
         filtros.busca ? item.titulo.toLowerCase().includes(filtros.busca.toLowerCase()) : true
@@ -306,6 +308,10 @@ export default function TemaDetail() {
                   </p>
                 </div>
                 <div className="flex shrink-0 flex-wrap items-center gap-2">
+                  {item.classeKozo && <ClasseKozoPill classeKozo={item.classeKozo} />}
+                  {item.tempoEstimado && (
+                    <span className="pill bg-bg-elevated text-text-muted">⏱ {item.tempoEstimado}</span>
+                  )}
                   <PrioridadePill prioridade={item.prioridade} />
                   <select
                     className="input-base py-1 text-xs"

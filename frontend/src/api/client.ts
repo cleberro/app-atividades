@@ -94,6 +94,8 @@ export const api = {
     status?: string;
     tipo?: string;
     prioridade?: string;
+    classeKozo?: string;
+    tempoEstimado?: string;
     q?: string;
   } = {}) => request<Item[]>(`/api/itens${buildQuery(filtros)}`),
   criarItem: (dados: NovoItemPayload) =>
