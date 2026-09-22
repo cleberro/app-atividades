@@ -43,16 +43,3 @@ export function PrioridadePill({ prioridade }: { prioridade: Prioridade | string
     </span>
   );
 }
-
-export function TipoPill({ tipo }: { tipo: string | null }) {
-  const isAcao = tipo === 'Ação';
-  const color = isAcao ? 'var(--accent-primary)' : 'var(--accent-secondary)';
-  return (
-    <span
-      className="pill"
-      style={{ backgroundColor: `${color}26`, color, border: `1px solid ${color}55` }}
-    >
-      {tipo || '—'}
-    </span>
-  );
-}

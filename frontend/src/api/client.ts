@@ -92,7 +92,6 @@ export const api = {
   listarItens: (filtros: {
     tema?: string;
     status?: string;
-    tipo?: string;
     prioridade?: string;
     q?: string;
   } = {}) => request<Item[]>(`/api/itens${buildQuery(filtros)}`),

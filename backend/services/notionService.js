@@ -198,31 +198,22 @@ function mapItem(page) {
     id: page.id,
     titulo: getTitle(p['Título']),
     temaIds: getRelationIds(p.Tema),
-    tipo: getSelect(p.Tipo),
     descricao: getRichText(p['Descrição']),
     responsavel: getRichText(p['Responsável']),
     status: getSelect(p.Status),
     prazo: getDate(p.Prazo),
-    dataReuniao: getDate(p['Data Reunião']),
     prioridade: getSelect(p.Prioridade),
     priorizadoHoje: getCheckbox(p['Priorizado Hoje']),
-    reuniaoOrigem: getRichText(p['Reunião de Origem']),
     anotacoesDiarias: getRichText(p['Anotações Diárias']),
     urlAta: getUrl(p['URL da Ata']),
-    origem: getSelect(p.Origem),
     criadoEm: getCreatedTime(p['Criado em']),
     ordemPriorizadoHoje: getNumber(p['Ordem Priorizado Hoje']),
     dataOrdemPriorizado: getDate(p['Data Ordem Priorizado']),
     whatsappContatoIds: getRelationIds(p['Notificar WhatsApp']),
     emailContatoIds: getRelationIds(p['Notificar Email']),
-    objetivoProblema: getRichText(p['Objetivo / Problema']),
-    situacaoAtual: getRichText(p['Situação Atual']),
-    situacaoDesejada: getRichText(p['Situação Desejada']),
     oQuePrecisaSerFeito: getRichText(p['O Que Precisa Ser Feito']),
     podeDelegar: getSelect(p['Pode Delegar']),
     delegarPara: getRichText(p['Delegar Para']),
-    motivoAtraso: getRichText(p['Motivo do Atraso']),
-    dataReprogramacao: getDate(p['Data de Reprogramação']),
   };
 }
 
@@ -439,7 +430,7 @@ async function deleteTema(temaId) {
 
 /**
  * Lista itens aplicando filtros opcionais combinados com AND.
- * filtros: { tema, status, tipo, prioridade, q }
+ * filtros: { tema, status, prioridade, q }
  */
 async function listItens(filtros = {}) {
   const andFilters = [];
@@ -449,9 +440,6 @@ async function listItens(filtros = {}) {
   }
   if (filtros.status) {
     andFilters.push({ property: 'Status', select: { equals: filtros.status } });
-  }
-  if (filtros.tipo) {
-    andFilters.push({ property: 'Tipo', select: { equals: filtros.tipo } });
   }
   if (filtros.prioridade) {
     andFilters.push({ property: 'Prioridade', select: { equals: filtros.prioridade } });
@@ -479,19 +467,15 @@ async function listItens(filtros = {}) {
 }
 
 /**
- * Cria um novo item. Origem e sempre fixada como "App".
+ * Cria um novo item.
  */
 async function createItem(dados) {
   const properties = {
     'Título': { title: [{ text: { content: dados.titulo || 'Sem título' } }] },
-    Origem: { select: { name: 'App' } },
   };
 
   if (dados.temaId) {
     properties.Tema = { relation: [{ id: dados.temaId }] };
-  }
-  if (dados.tipo) {
-    properties.Tipo = { select: { name: dados.tipo } };
   }
   if (dados.descricao) {
     properties['Descrição'] = { rich_text: buildRichText(dados.descricao) };
@@ -505,32 +489,17 @@ async function createItem(dados) {
   if (dados.prazo) {
     properties.Prazo = { date: { start: dados.prazo } };
   }
-  if (dados.dataReuniao) {
-    properties['Data Reunião'] = { date: { start: dados.dataReuniao } };
-  }
   if (dados.prioridade) {
     properties.Prioridade = { select: { name: dados.prioridade } };
   }
   if (typeof dados.priorizadoHoje === 'boolean') {
     properties['Priorizado Hoje'] = { checkbox: dados.priorizadoHoje };
   }
-  if (dados.reuniaoOrigem) {
-    properties['Reunião de Origem'] = { rich_text: buildRichText(dados.reuniaoOrigem) };
-  }
   if (dados.anotacoesDiarias) {
     properties['Anotações Diárias'] = { rich_text: buildRichText(dados.anotacoesDiarias) };
   }
   if (dados.urlAta) {
     properties['URL da Ata'] = { url: dados.urlAta };
-  }
-  if (dados.objetivoProblema) {
-    properties['Objetivo / Problema'] = { rich_text: buildRichText(dados.objetivoProblema) };
-  }
-  if (dados.situacaoAtual) {
-    properties['Situação Atual'] = { rich_text: buildRichText(dados.situacaoAtual) };
-  }
-  if (dados.situacaoDesejada) {
-    properties['Situação Desejada'] = { rich_text: buildRichText(dados.situacaoDesejada) };
   }
   if (dados.oQuePrecisaSerFeito) {
     properties['O Que Precisa Ser Feito'] = { rich_text: buildRichText(dados.oQuePrecisaSerFeito) };
@@ -540,12 +509,6 @@ async function createItem(dados) {
   }
   if (dados.delegarPara) {
     properties['Delegar Para'] = { rich_text: buildRichText(dados.delegarPara) };
-  }
-  if (dados.motivoAtraso) {
-    properties['Motivo do Atraso'] = { rich_text: buildRichText(dados.motivoAtraso) };
-  }
-  if (dados.dataReprogramacao) {
-    properties['Data de Reprogramação'] = { date: { start: dados.dataReprogramacao } };
   }
 
   const page = await notion.pages.create({
@@ -558,7 +521,7 @@ async function createItem(dados) {
 
 /**
  * Atualiza campos de um item existente (status, prioridade, responsavel,
- * prazo, titulo, descricao, tipo, tema).
+ * prazo, titulo, descricao, tema).
  */
 async function updateItem(itemId, dados) {
   const properties = {};
@@ -568,9 +531,6 @@ async function updateItem(itemId, dados) {
   }
   if (dados.temaId !== undefined) {
     properties.Tema = { relation: dados.temaId ? [{ id: dados.temaId }] : [] };
-  }
-  if (dados.tipo !== undefined) {
-    properties.Tipo = { select: dados.tipo ? { name: dados.tipo } : null };
   }
   if (dados.descricao !== undefined) {
     properties['Descrição'] = { rich_text: buildRichText(dados.descricao) };
@@ -584,17 +544,11 @@ async function updateItem(itemId, dados) {
   if (dados.prazo !== undefined) {
     properties.Prazo = { date: dados.prazo ? { start: dados.prazo } : null };
   }
-  if (dados.dataReuniao !== undefined) {
-    properties['Data Reunião'] = { date: dados.dataReuniao ? { start: dados.dataReuniao } : null };
-  }
   if (dados.prioridade !== undefined) {
     properties.Prioridade = { select: dados.prioridade ? { name: dados.prioridade } : null };
   }
   if (dados.priorizadoHoje !== undefined) {
     properties['Priorizado Hoje'] = { checkbox: !!dados.priorizadoHoje };
-  }
-  if (dados.reuniaoOrigem !== undefined) {
-    properties['Reunião de Origem'] = { rich_text: buildRichText(dados.reuniaoOrigem) };
   }
   if (dados.anotacoesDiarias !== undefined) {
     properties['Anotações Diárias'] = { rich_text: buildRichText(dados.anotacoesDiarias) };
@@ -622,15 +576,6 @@ async function updateItem(itemId, dados) {
       relation: (dados.emailContatoIds || []).map((id) => ({ id })),
     };
   }
-  if (dados.objetivoProblema !== undefined) {
-    properties['Objetivo / Problema'] = { rich_text: buildRichText(dados.objetivoProblema) };
-  }
-  if (dados.situacaoAtual !== undefined) {
-    properties['Situação Atual'] = { rich_text: buildRichText(dados.situacaoAtual) };
-  }
-  if (dados.situacaoDesejada !== undefined) {
-    properties['Situação Desejada'] = { rich_text: buildRichText(dados.situacaoDesejada) };
-  }
   if (dados.oQuePrecisaSerFeito !== undefined) {
     properties['O Que Precisa Ser Feito'] = { rich_text: buildRichText(dados.oQuePrecisaSerFeito) };
   }
@@ -639,14 +584,6 @@ async function updateItem(itemId, dados) {
   }
   if (dados.delegarPara !== undefined) {
     properties['Delegar Para'] = { rich_text: buildRichText(dados.delegarPara) };
-  }
-  if (dados.motivoAtraso !== undefined) {
-    properties['Motivo do Atraso'] = { rich_text: buildRichText(dados.motivoAtraso) };
-  }
-  if (dados.dataReprogramacao !== undefined) {
-    properties['Data de Reprogramação'] = {
-      date: dados.dataReprogramacao ? { start: dados.dataReprogramacao } : null,
-    };
   }
 
   const page = await notion.pages.update({ page_id: itemId, properties });
@@ -1182,42 +1119,20 @@ async function deleteContatoWhatsapp(contatoId) {
 }
 
 /**
- * Itens com prazo efetivo anterior a "dataReferencia" ("YYYY-MM-DD") e que
- * ainda não estão concluídos nem marcados "Não se aplica".
- *
- * "Prazo efetivo" = "Data de Reprogramação" quando preenchida, senão "Prazo"
- * (mesma regra do prazoEfetivo() do frontend): reprogramar um item adia o
- * aviso de vencido, sem apagar a data originalmente combinada.
- *
- * O filtro é montado como um "or" de dois ramos (e não um "and" com um "or"
- * dentro) porque a API do Notion aceita no máximo dois níveis de aninhamento
- * em filtros compostos.
+ * Itens com prazo anterior a "dataReferencia" ("YYYY-MM-DD") e que ainda não
+ * estão concluídos nem marcados "Não se aplica".
  */
 async function getItensVencidos(dataReferencia) {
-  const naoConcluido = [
-    { property: 'Status', select: { does_not_equal: 'Concluída' } },
-    { property: 'Status', select: { does_not_equal: 'Não se aplica' } },
-  ];
   const results = [];
   let cursor;
   do {
     const response = await notion.databases.query({
       database_id: ITENS_DB_ID,
       filter: {
-        or: [
-          {
-            and: [
-              ...naoConcluido,
-              { property: 'Data de Reprogramação', date: { is_empty: true } },
-              { property: 'Prazo', date: { before: dataReferencia } },
-            ],
-          },
-          {
-            and: [
-              ...naoConcluido,
-              { property: 'Data de Reprogramação', date: { before: dataReferencia } },
-            ],
-          },
+        and: [
+          { property: 'Status', select: { does_not_equal: 'Concluída' } },
+          { property: 'Status', select: { does_not_equal: 'Não se aplica' } },
+          { property: 'Prazo', date: { before: dataReferencia } },
         ],
       },
       page_size: 100,

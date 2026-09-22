@@ -16,7 +16,7 @@ import FiltrosItens, { FILTROS_VAZIOS, type FiltrosItensValor } from '../compone
 import { passaFiltroMulti, passaFiltroMultiArray } from '../components/MultiSelectFiltro';
 import { passaFiltroPrazo } from '../components/FiltroPrazo';
 import { RANK_PRIORIDADE } from '../utils/ordenacao';
-import { prazoEfetivo, formatarDataBr, estaAtrasado } from '../utils/prazo';
+import { formatarDataBr, estaAtrasado } from '../utils/prazo';
 import ItemDetailModal from '../components/ItemDetailModal';
 import type { Item } from '../api/types';
 import { PRIORIDADE_OPCOES, STATUS_ITEM_OPCOES } from '../api/types';
@@ -66,10 +66,9 @@ export default function Tabela() {
       }))
       .filter((item) => passaFiltroMultiArray(item.temaIds, filtros.tema))
       .filter((item) => passaFiltroMulti(item.status, filtros.status))
-      .filter((item) => passaFiltroMulti(item.tipo, filtros.tipo))
       .filter((item) => passaFiltroMulti(item.prioridade, filtros.prioridade))
       .filter((item) => passaFiltroMulti(item.responsavel, filtros.responsavel))
-      .filter((item) => passaFiltroPrazo(prazoEfetivo(item), filtros.prazo))
+      .filter((item) => passaFiltroPrazo(item.prazo, filtros.prazo))
       .filter((item) =>
         filtros.busca ? item.titulo.toLowerCase().includes(filtros.busca.toLowerCase()) : true
       );
@@ -94,10 +93,6 @@ export default function Tabela() {
             {info.getValue()}
           </button>
         ),
-      }),
-      columnHelper.accessor('tipo', {
-        header: 'Tipo',
-        cell: (info) => info.getValue() || '—',
       }),
       columnHelper.accessor('status', {
         header: 'Status',
@@ -168,11 +163,9 @@ export default function Tabela() {
       }),
       columnHelper.accessor('prazo', {
         header: 'Prazo',
-        // Ordena pelo prazo efetivo (reprogramação, quando houver), igual ao
-        // resto do app — sem isso a coluna ordenaria pela data já superada.
         sortingFn: (rowA, rowB) => {
-          const a = prazoEfetivo(rowA.original);
-          const b = prazoEfetivo(rowB.original);
+          const a = rowA.original.prazo;
+          const b = rowB.original.prazo;
           if (!a && !b) return 0;
           if (!a) return 1;
           if (!b) return -1;
@@ -180,18 +173,11 @@ export default function Tabela() {
         },
         cell: (info) => {
           const item = info.row.original;
-          if (!item.prazo && !item.dataReprogramacao) return '—';
+          if (!item.prazo) return '—';
           const atrasado = estaAtrasado(item);
           return (
             <span className={`text-xs ${atrasado ? 'font-semibold text-status-bloqueada' : ''}`}>
-              {item.dataReprogramacao ? (
-                <>
-                  <span className="text-text-muted line-through">{formatarDataBr(item.prazo)}</span>{' '}
-                  → {formatarDataBr(item.dataReprogramacao)}
-                </>
-              ) : (
-                formatarDataBr(item.prazo)
-              )}
+              {formatarDataBr(item.prazo)}
             </span>
           );
         },

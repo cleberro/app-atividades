@@ -20,15 +20,15 @@ router.get('/kanban', async (req, res, next) => {
   }
 });
 
-// GET /api/itens?tema=&status=&tipo=&prioridade=&q=
+// GET /api/itens?tema=&status=&prioridade=&q=
 router.get('/', async (req, res, next) => {
   try {
-    const { tema, status, tipo, prioridade, q } = req.query;
-    const cacheKey = `itens:list:${JSON.stringify({ tema, status, tipo, prioridade, q })}`;
+    const { tema, status, prioridade, q } = req.query;
+    const cacheKey = `itens:list:${JSON.stringify({ tema, status, prioridade, q })}`;
     const cached = cache.get(cacheKey);
     if (cached) return res.json(cached);
 
-    const itens = await notionService.listItens({ tema, status, tipo, prioridade, q });
+    const itens = await notionService.listItens({ tema, status, prioridade, q });
     cache.set(cacheKey, itens);
     res.json(itens);
   } catch (err) {
@@ -36,7 +36,7 @@ router.get('/', async (req, res, next) => {
   }
 });
 
-// POST /api/itens - cria novo item (Origem = "App")
+// POST /api/itens - cria novo item
 router.post('/', async (req, res, next) => {
   try {
     const { titulo } = req.body;

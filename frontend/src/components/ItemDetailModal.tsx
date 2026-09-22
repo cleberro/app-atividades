@@ -2,11 +2,11 @@ import { useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { api } from '../api/client';
-import { PrioridadePill, StatusPill, TipoPill } from './Pills';
-import type { Item, PodeDelegar, Prioridade, StatusItem, TipoItem } from '../api/types';
-import { PODE_DELEGAR_OPCOES, PRIORIDADE_OPCOES, STATUS_ITEM_OPCOES, TIPO_OPCOES } from '../api/types';
+import { PrioridadePill, StatusPill } from './Pills';
+import type { Item, PodeDelegar, Prioridade, StatusItem } from '../api/types';
+import { PODE_DELEGAR_OPCOES, PRIORIDADE_OPCOES, STATUS_ITEM_OPCOES } from '../api/types';
 import ChecklistSubtarefas from './ChecklistSubtarefas';
-import { estaAtrasado, formatarDataBr } from '../utils/prazo';
+import { estaAtrasado } from '../utils/prazo';
 
 interface ItemDetailModalProps {
   item: Item;
@@ -33,7 +33,6 @@ export default function ItemDetailModal({ item, onClose }: ItemDetailModalProps)
 
   const [titulo, setTitulo] = useState(item.titulo);
   const [temaId, setTemaId] = useState(item.temaIds[0] || '');
-  const [tipo, setTipo] = useState<TipoItem | ''>(item.tipo || '');
   const [descricao, setDescricao] = useState(item.descricao);
   const [responsavel, setResponsavel] = useState(item.responsavel);
   const [status, setStatus] = useState<StatusItem | ''>(item.status || '');
@@ -44,20 +43,14 @@ export default function ItemDetailModal({ item, onClose }: ItemDetailModalProps)
   const [notaNova, setNotaNova] = useState('');
   const [whatsappContatoIds, setWhatsappContatoIds] = useState<string[]>(item.whatsappContatoIds);
   const [emailContatoIds, setEmailContatoIds] = useState<string[]>(item.emailContatoIds);
-  const [objetivoProblema, setObjetivoProblema] = useState(item.objetivoProblema);
-  const [situacaoAtual, setSituacaoAtual] = useState(item.situacaoAtual);
-  const [situacaoDesejada, setSituacaoDesejada] = useState(item.situacaoDesejada);
   const [oQuePrecisaSerFeito, setOQuePrecisaSerFeito] = useState(item.oQuePrecisaSerFeito);
   const [podeDelegar, setPodeDelegar] = useState<PodeDelegar | ''>(item.podeDelegar || '');
   const [delegarPara, setDelegarPara] = useState(item.delegarPara);
-  const [motivoAtraso, setMotivoAtraso] = useState(item.motivoAtraso);
-  const [dataReprogramacao, setDataReprogramacao] = useState(item.dataReprogramacao || '');
 
   // Reseta o formulário sempre que um item diferente é aberto no modal.
   useEffect(() => {
     setTitulo(item.titulo);
     setTemaId(item.temaIds[0] || '');
-    setTipo(item.tipo || '');
     setDescricao(item.descricao);
     setResponsavel(item.responsavel);
     setStatus(item.status || '');
@@ -68,14 +61,9 @@ export default function ItemDetailModal({ item, onClose }: ItemDetailModalProps)
     setNotaNova('');
     setWhatsappContatoIds(item.whatsappContatoIds);
     setEmailContatoIds(item.emailContatoIds);
-    setObjetivoProblema(item.objetivoProblema);
-    setSituacaoAtual(item.situacaoAtual);
-    setSituacaoDesejada(item.situacaoDesejada);
     setOQuePrecisaSerFeito(item.oQuePrecisaSerFeito);
     setPodeDelegar(item.podeDelegar || '');
     setDelegarPara(item.delegarPara);
-    setMotivoAtraso(item.motivoAtraso);
-    setDataReprogramacao(item.dataReprogramacao || '');
   }, [item.id]);
 
   function alternarContatoWhatsapp(contatoId: string) {
@@ -110,7 +98,6 @@ export default function ItemDetailModal({ item, onClose }: ItemDetailModalProps)
       api.atualizarItem(item.id, {
         titulo,
         temaId: temaId || undefined,
-        tipo: (tipo || undefined) as TipoItem | undefined,
         descricao,
         responsavel,
         status: (status || undefined) as StatusItem | undefined,
@@ -118,14 +105,9 @@ export default function ItemDetailModal({ item, onClose }: ItemDetailModalProps)
         prazo: prazo || undefined,
         whatsappContatoIds,
         emailContatoIds,
-        objetivoProblema,
-        situacaoAtual,
-        situacaoDesejada,
         oQuePrecisaSerFeito,
         podeDelegar,
         delegarPara,
-        motivoAtraso,
-        dataReprogramacao: dataReprogramacao || '',
       }),
     onSuccess: invalidarTudo,
   });
@@ -180,11 +162,7 @@ export default function ItemDetailModal({ item, onClose }: ItemDetailModalProps)
 
   // Atraso avaliado sobre os valores em edição (e não sobre o item salvo),
   // para o bloco reagir na hora em que o prazo ou o status muda na tela.
-  const atrasado = estaAtrasado({
-    prazo: prazo || null,
-    dataReprogramacao: dataReprogramacao || null,
-    status: (status || null) as StatusItem | null,
-  });
+  const atrasado = estaAtrasado({ prazo: prazo || null, status: (status || null) as StatusItem | null });
 
   return (
     <div
@@ -203,8 +181,9 @@ export default function ItemDetailModal({ item, onClose }: ItemDetailModalProps)
               {temaAtual && <span className="pill bg-bg-elevated">{temaAtual.nome}</span>}
               <StatusPill status={status || null} />
               <PrioridadePill prioridade={prioridade || null} />
-              <TipoPill tipo={tipo || null} />
-              {item.origem && <span className="pill bg-bg-elevated">{item.origem}</span>}
+              {atrasado && (
+                <span className="pill bg-status-bloqueada/15 text-status-bloqueada">⚠ Atrasado</span>
+              )}
             </div>
           </div>
           <button
@@ -234,16 +213,6 @@ export default function ItemDetailModal({ item, onClose }: ItemDetailModalProps)
               {(temas ?? []).map((t) => (
                 <option key={t.id} value={t.id}>
                   {t.nome}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className="mb-1 block text-xs font-medium text-text-muted">Tipo</label>
-            <select className="input-base w-full" value={tipo} onChange={(e) => setTipo(e.target.value as TipoItem)}>
-              {TIPO_OPCOES.map((op) => (
-                <option key={op} value={op}>
-                  {op}
                 </option>
               ))}
             </select>
@@ -286,20 +255,13 @@ export default function ItemDetailModal({ item, onClose }: ItemDetailModalProps)
             />
           </div>
           <div>
-            <label className="mb-1 block text-xs font-medium text-text-muted">
-              Prazo{dataReprogramacao ? ' (original)' : ''}
-            </label>
+            <label className="mb-1 block text-xs font-medium text-text-muted">Prazo</label>
             <input
               type="date"
-              className="input-base w-full"
+              className={`input-base w-full ${atrasado ? 'ring-1 ring-status-bloqueada/60' : ''}`}
               value={prazo}
               onChange={(e) => setPrazo(e.target.value)}
             />
-            {dataReprogramacao && (
-              <p className="mt-1 text-xs text-text-muted">
-                Vale a reprogramação: {formatarDataBr(dataReprogramacao)}
-              </p>
-            )}
           </div>
         </div>
 
@@ -342,43 +304,10 @@ export default function ItemDetailModal({ item, onClose }: ItemDetailModalProps)
         </div>
 
         <div className="mt-4 rounded-lg bg-bg-elevated/40 p-3">
-          <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-text-muted">Detalhamento</p>
+          <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-text-muted">
+            Plano de ação e delegação
+          </p>
           <div className="flex flex-col gap-3">
-            <div>
-              <label className="mb-1 block text-xs font-medium text-text-muted">
-                Objetivo / problema a resolver
-              </label>
-              <textarea
-                className="input-base w-full"
-                rows={2}
-                placeholder="Que problema este item resolve? Qual o objetivo?"
-                value={objetivoProblema}
-                onChange={(e) => setObjetivoProblema(e.target.value)}
-              />
-            </div>
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <div>
-                <label className="mb-1 block text-xs font-medium text-text-muted">Como está hoje</label>
-                <textarea
-                  className="input-base w-full"
-                  rows={3}
-                  placeholder="Situação atual"
-                  value={situacaoAtual}
-                  onChange={(e) => setSituacaoAtual(e.target.value)}
-                />
-              </div>
-              <div>
-                <label className="mb-1 block text-xs font-medium text-text-muted">Como deveria ser</label>
-                <textarea
-                  className="input-base w-full"
-                  rows={3}
-                  placeholder="Situação desejada"
-                  value={situacaoDesejada}
-                  onChange={(e) => setSituacaoDesejada(e.target.value)}
-                />
-              </div>
-            </div>
-
             <ChecklistSubtarefas valor={oQuePrecisaSerFeito} onChange={setOQuePrecisaSerFeito} />
 
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
@@ -406,44 +335,6 @@ export default function ItemDetailModal({ item, onClose }: ItemDetailModalProps)
                   placeholder="Nome de quem vai assumir"
                 />
               </div>
-            </div>
-          </div>
-        </div>
-
-        <div
-          className={`mt-3 rounded-lg p-3 ${
-            atrasado ? 'bg-status-bloqueada/10 ring-1 ring-status-bloqueada/40' : 'bg-bg-elevated/40'
-          }`}
-        >
-          <p
-            className={`mb-3 text-xs font-semibold uppercase tracking-wide ${
-              atrasado ? 'text-status-bloqueada' : 'text-text-muted'
-            }`}
-          >
-            {atrasado ? '⚠ Item atrasado — atraso e reprogramação' : 'Atraso e reprogramação'}
-          </p>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <div>
-              <label className="mb-1 block text-xs font-medium text-text-muted">Motivo do atraso</label>
-              <textarea
-                className="input-base w-full"
-                rows={2}
-                placeholder="Por que o prazo não foi cumprido?"
-                value={motivoAtraso}
-                onChange={(e) => setMotivoAtraso(e.target.value)}
-              />
-            </div>
-            <div>
-              <label className="mb-1 block text-xs font-medium text-text-muted">Data de reprogramação</label>
-              <input
-                type="date"
-                className="input-base w-full"
-                value={dataReprogramacao}
-                onChange={(e) => setDataReprogramacao(e.target.value)}
-              />
-              <p className="mt-1 text-xs text-text-muted">
-                Passa a valer no lugar do prazo em filtros, ordenação e avisos. O prazo original é preservado.
-              </p>
             </div>
           </div>
         </div>
@@ -534,15 +425,7 @@ export default function ItemDetailModal({ item, onClose }: ItemDetailModalProps)
           </div>
         </div>
 
-        <div className="mt-4 grid grid-cols-1 gap-2 rounded-lg bg-bg-elevated/50 p-3 text-xs text-text-muted sm:grid-cols-4">
-          <p>
-            <span className="font-medium text-text-primary">Reunião de origem:</span>{' '}
-            {item.reuniaoOrigem || '—'}
-          </p>
-          <p>
-            <span className="font-medium text-text-primary">Data da reunião:</span>{' '}
-            {item.dataReuniao || '—'}
-          </p>
+        <div className="mt-4 grid grid-cols-1 gap-2 rounded-lg bg-bg-elevated/50 p-3 text-xs text-text-muted sm:grid-cols-2">
           <p>
             <span className="font-medium text-text-primary">Ata:</span>{' '}
             {item.urlAta ? (

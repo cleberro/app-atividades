@@ -1,8 +1,8 @@
 import { useState, FormEvent } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../api/client';
-import type { NovoItemPayload, PodeDelegar, Prioridade, StatusItem, TipoItem } from '../api/types';
-import { PODE_DELEGAR_OPCOES, PRIORIDADE_OPCOES, STATUS_ITEM_OPCOES, TIPO_OPCOES } from '../api/types';
+import type { NovoItemPayload, PodeDelegar, Prioridade, StatusItem } from '../api/types';
+import { PODE_DELEGAR_OPCOES, PRIORIDADE_OPCOES, STATUS_ITEM_OPCOES } from '../api/types';
 import ChecklistSubtarefas from './ChecklistSubtarefas';
 
 interface ItemFormProps {
@@ -17,7 +17,6 @@ export default function ItemForm({ temaIdFixo, onSucesso, compacto }: ItemFormPr
 
   const [titulo, setTitulo] = useState('');
   const [temaId, setTemaId] = useState(temaIdFixo || '');
-  const [tipo, setTipo] = useState<TipoItem | ''>('Ação');
   const [descricao, setDescricao] = useState('');
   const [responsavel, setResponsavel] = useState('');
   const [status, setStatus] = useState<StatusItem | ''>('Pendente');
@@ -25,11 +24,8 @@ export default function ItemForm({ temaIdFixo, onSucesso, compacto }: ItemFormPr
   const [prazo, setPrazo] = useState('');
 
   // Detalhamento: fica recolhido por padrão para o cadastro rápido continuar
-  // rápido — quem quer estruturar o item (objetivo, situação, plano) abre.
+  // rápido — quem quer estruturar o plano de ação e a delegação abre.
   const [detalhesAbertos, setDetalhesAbertos] = useState(false);
-  const [objetivoProblema, setObjetivoProblema] = useState('');
-  const [situacaoAtual, setSituacaoAtual] = useState('');
-  const [situacaoDesejada, setSituacaoDesejada] = useState('');
   const [oQuePrecisaSerFeito, setOQuePrecisaSerFeito] = useState('');
   const [podeDelegar, setPodeDelegar] = useState<PodeDelegar | ''>('');
   const [delegarPara, setDelegarPara] = useState('');
@@ -44,9 +40,6 @@ export default function ItemForm({ temaIdFixo, onSucesso, compacto }: ItemFormPr
       setDescricao('');
       setResponsavel('');
       setPrazo('');
-      setObjetivoProblema('');
-      setSituacaoAtual('');
-      setSituacaoDesejada('');
       setOQuePrecisaSerFeito('');
       setPodeDelegar('');
       setDelegarPara('');
@@ -60,15 +53,11 @@ export default function ItemForm({ temaIdFixo, onSucesso, compacto }: ItemFormPr
     mutation.mutate({
       titulo: titulo.trim(),
       temaId: temaId || undefined,
-      tipo: (tipo || undefined) as TipoItem | undefined,
       descricao: descricao || undefined,
       responsavel: responsavel || undefined,
       status: (status || undefined) as StatusItem | undefined,
       prioridade: (prioridade || undefined) as Prioridade | undefined,
       prazo: prazo || undefined,
-      objetivoProblema: objetivoProblema || undefined,
-      situacaoAtual: situacaoAtual || undefined,
-      situacaoDesejada: situacaoDesejada || undefined,
       oQuePrecisaSerFeito: oQuePrecisaSerFeito || undefined,
       podeDelegar: (podeDelegar || undefined) as PodeDelegar | undefined,
       delegarPara: delegarPara || undefined,
@@ -105,18 +94,8 @@ export default function ItemForm({ temaIdFixo, onSucesso, compacto }: ItemFormPr
         )}
       </div>
 
-      {/* Classificação: os três selects que definem como o item é tratado. */}
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-        <div>
-          <label className="mb-1 block text-xs font-medium text-text-muted">Tipo</label>
-          <select className="input-base w-full" value={tipo} onChange={(e) => setTipo(e.target.value as TipoItem)}>
-            {TIPO_OPCOES.map((op) => (
-              <option key={op} value={op}>
-                {op}
-              </option>
-            ))}
-          </select>
-        </div>
+      {/* Classificação: os dois selects que definem como o item é tratado. */}
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <div>
           <label className="mb-1 block text-xs font-medium text-text-muted">Prioridade</label>
           <select
@@ -186,48 +165,12 @@ export default function ItemForm({ temaIdFixo, onSucesso, compacto }: ItemFormPr
           aria-expanded={detalhesAbertos}
           className="flex w-full items-center justify-between text-left text-xs font-medium text-text-muted hover:text-text-primary"
         >
-          <span>Detalhamento (objetivo, situação, plano de ação, delegação)</span>
+          <span>Detalhamento (plano de ação, delegação)</span>
           <span aria-hidden="true">{detalhesAbertos ? '▲' : '▼'}</span>
         </button>
 
         {detalhesAbertos && (
           <div className="mt-3 flex flex-col gap-3">
-            <div>
-              <label className="mb-1 block text-xs font-medium text-text-muted">
-                Objetivo / problema a resolver
-              </label>
-              <textarea
-                className="input-base w-full"
-                rows={2}
-                placeholder="Que problema este item resolve? Qual o objetivo?"
-                value={objetivoProblema}
-                onChange={(e) => setObjetivoProblema(e.target.value)}
-              />
-            </div>
-            {/* "Hoje" e "deveria ser" lado a lado: a comparação é o ponto. */}
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <div>
-                <label className="mb-1 block text-xs font-medium text-text-muted">Como está hoje</label>
-                <textarea
-                  className="input-base w-full"
-                  rows={3}
-                  placeholder="Situação atual"
-                  value={situacaoAtual}
-                  onChange={(e) => setSituacaoAtual(e.target.value)}
-                />
-              </div>
-              <div>
-                <label className="mb-1 block text-xs font-medium text-text-muted">Como deveria ser</label>
-                <textarea
-                  className="input-base w-full"
-                  rows={3}
-                  placeholder="Situação desejada"
-                  value={situacaoDesejada}
-                  onChange={(e) => setSituacaoDesejada(e.target.value)}
-                />
-              </div>
-            </div>
-
             <ChecklistSubtarefas valor={oQuePrecisaSerFeito} onChange={setOQuePrecisaSerFeito} />
 
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">

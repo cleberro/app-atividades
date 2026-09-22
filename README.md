@@ -123,8 +123,8 @@ completamente — isso é uma limitação do navegador, não do código.
 | GET    | `/api/temas`                       | Lista os 12 temas + contagem de itens pendentes por tema |
 | PATCH  | `/api/temas/:id/foco`              | Alterna "Foco da Semana" de um tema                       |
 | DELETE | `/api/temas/:id`                   | Exclui (arquiva no Notion) um tema — recusado com 409 se ainda houver itens vinculados |
-| GET    | `/api/itens`                       | Lista itens (filtros: `tema`, `status`, `tipo`, `prioridade`, `q`) |
-| POST   | `/api/itens`                       | Cria um novo item (Origem = "App")                        |
+| GET    | `/api/itens`                       | Lista itens (filtros: `tema`, `status`, `prioridade`, `q`) |
+| POST   | `/api/itens`                       | Cria um novo item                                          |
 | PATCH  | `/api/itens/:id`                   | Atualiza status/prioridade/responsável/prazo/etc.        |
 | DELETE | `/api/itens/:id`                   | Exclui (arquiva no Notion) um item                        |
 | PATCH  | `/api/itens/:id/priorizar-hoje`    | Alterna "Priorizado Hoje"                                 |
@@ -246,31 +246,16 @@ do app com fidelidade maior que o WhatsApp: usa as cores reais dos Pills via CSS
 aproximação por emoji) — ver `CORES`/`STATUS_COLORS_EMAIL`/`PRIORIDADE_COLORS_EMAIL` e
 `montarHtmlItensTema()` em `backend/services/emailService.js`.
 
-### Detalhamento do item, delegação e reprogramação
+### Detalhamento do item e delegação
 
 O cadastro de um item vai além de título/prazo/responsável: há um bloco de **Detalhamento**
 (recolhido por padrão no formulário de "Novo item", sempre aberto no popup do item) com
 
 | Campo no app | Propriedade no Notion | Tipo |
 | --- | --- | --- |
-| Objetivo / problema a resolver | `Objetivo / Problema` | Texto |
-| Como está hoje | `Situação Atual` | Texto |
-| Como deveria ser | `Situação Desejada` | Texto |
 | O que precisa ser feito | `O Que Precisa Ser Feito` | Texto (checklist) |
 | Posso delegar? | `Pode Delegar` | Select: Sim / Não / A avaliar |
 | Delegar para | `Delegar Para` | Texto |
-| Motivo do atraso | `Motivo do Atraso` | Texto |
-| Data de reprogramação | `Data de Reprogramação` | Data |
-
-Essas oito propriedades são criadas na database "Itens - Ações e Informações" pelo script
-idempotente `backend/scripts/adicionar-campos-itens.js` (ele lê o schema atual e só cria o que
-falta; rodar duas vezes não duplica nada):
-
-```bash
-cd backend
-node scripts/adicionar-campos-itens.js --dry-run   # só mostra o que faria
-node scripts/adicionar-campos-itens.js             # aplica
-```
 
 **Sub-tarefas sem database nova.** "O que precisa ser feito" é um campo de texto no Notion, mas o
 app o edita como checklist: cada linha é `[ ] tarefa` ou `[x] tarefa` (ver
@@ -279,16 +264,10 @@ editar e contar ("3/7 concluídas") na interface e ainda ler/escrever direto no 
 qualquer outro formato (texto escrito à mão no Notion) são preservadas como sub-tarefas não
 concluídas, nunca descartadas.
 
-**Prazo efetivo.** "Data de conclusão" não virou campo novo: continua sendo o `Prazo` já existente.
-Reprogramar **não** sobrescreve o `Prazo` — ele guarda a data originalmente combinada, e a
-`Data de Reprogramação` passa a valer como *prazo efetivo* (`prazoEfetivo() = reprogramação ??
-prazo`, em `frontend/src/utils/prazo.ts` e replicado no filtro de `getItensVencidos()`). O prazo
-efetivo é o que vale em: aviso de itens vencidos (WhatsApp/e-mail), filtro de prazo, ordenação
-"por prazo", coluna Prazo da Tabela (que mostra `15/03/2026 → 30/03/2026` quando há
-reprogramação) e a listagem de itens do Tema. Um item atrasado (prazo efetivo no passado e status
-diferente de Concluída/Não se aplica) destaca em vermelho o bloco "Atraso e reprogramação" no
-popup. As mensagens de WhatsApp e e-mail ganham a linha "🔁 Reprogramado para: ..." quando o campo
-está preenchido, e o "venceu há N dia(s)" passa a contar a partir do prazo efetivo.
+> Os campos `Objetivo / Problema`, `Situação Atual`, `Situação Desejada`, `Motivo do Atraso`,
+> `Data Reunião`, `Origem`, `Reunião de Origem`, `Tipo` e `Data de Reprogramação` foram removidos
+> da database e das telas do app. `backend/scripts/adicionar-campos-itens.js` é um script
+> histórico (criava parte desses campos) e não deve mais ser executado.
 
 ## 8. Notas e decisões de implementação
 
@@ -329,9 +308,8 @@ está preenchido, e o "venceu há N dia(s)" passa a contar a partir do prazo efe
   WhatsApp", só trocando telefone/apikey por um único campo de e-mail (não precisa de opt-in).
   `agruparItensPorContato()` em `notionService.js` é compartilhada pelos dois canais (recebe qual
   campo de relação usar).
-- O filtro de itens vencidos é montado como um `or` de dois ramos (`sem reprogramação + prazo
-  vencido` **ou** `reprogramação vencida`) em vez de um `and` com um `or` dentro: a API do Notion
-  aceita no máximo dois níveis de aninhamento em filtros compostos.
 - `backend/scripts/` guarda migrações de schema do Notion — scripts idempotentes, rodados à mão,
-  que só acrescentam propriedades. Nenhum deles apaga propriedade ou dado.
+  que só acrescentam propriedades. Nenhum deles apaga propriedade ou dado; a remoção dos campos
+  de detalhamento/reprogramação (ver seção 7) foi feita direto no schema do Notion, fora desses
+  scripts.
 - Não há testes automatizados nem ESLint/Prettier configurados em nenhum dos dois projetos.

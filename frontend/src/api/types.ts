@@ -1,8 +1,6 @@
 export type StatusItem = 'Pendente' | 'Em Andamento' | 'Concluída' | 'Bloqueada' | 'Não se aplica';
 export type Prioridade = 'Alta' | 'Média' | 'Baixa';
-export type TipoItem = 'Ação' | 'Informação';
 export type StatusTema = 'Ativo' | 'Pausado' | 'Concluído';
-export type Origem = 'Ata Notion' | 'App';
 export type PodeDelegar = 'Sim' | 'Não' | 'A avaliar';
 
 export interface Tema {
@@ -21,56 +19,39 @@ export interface Item {
   id: string;
   titulo: string;
   temaIds: string[];
-  tipo: TipoItem | null;
   descricao: string;
   responsavel: string;
   status: StatusItem | null;
   prazo: string | null;
-  dataReuniao: string | null;
   prioridade: Prioridade | null;
   priorizadoHoje: boolean;
-  reuniaoOrigem: string;
   anotacoesDiarias: string;
   urlAta: string | null;
-  origem: Origem | null;
   criadoEm: string | null;
   ordemPriorizadoHoje: number | null;
   dataOrdemPriorizado: string | null;
   whatsappContatoIds: string[];
   emailContatoIds: string[];
-  objetivoProblema: string;
-  situacaoAtual: string;
-  situacaoDesejada: string;
   /** Plano de ação em linhas "[ ] tarefa" / "[x] tarefa" (ver utils/subtarefas.ts). */
   oQuePrecisaSerFeito: string;
   podeDelegar: PodeDelegar | null;
   delegarPara: string;
-  motivoAtraso: string;
-  dataReprogramacao: string | null;
 }
 
 export interface NovoItemPayload {
   titulo: string;
   temaId?: string;
-  tipo?: TipoItem;
   descricao?: string;
   responsavel?: string;
   status?: StatusItem;
   prazo?: string;
-  dataReuniao?: string;
   prioridade?: Prioridade;
   priorizadoHoje?: boolean;
-  reuniaoOrigem?: string;
   anotacoesDiarias?: string;
   urlAta?: string;
-  objetivoProblema?: string;
-  situacaoAtual?: string;
-  situacaoDesejada?: string;
   oQuePrecisaSerFeito?: string;
   podeDelegar?: PodeDelegar | '';
   delegarPara?: string;
-  motivoAtraso?: string;
-  dataReprogramacao?: string;
 }
 
 export type AtualizarItemPayload = Partial<NovoItemPayload> & {
@@ -263,6 +244,5 @@ export const STATUS_ITEM_OPCOES: StatusItem[] = [
 ];
 
 export const PRIORIDADE_OPCOES: Prioridade[] = ['Alta', 'Média', 'Baixa'];
-export const TIPO_OPCOES: TipoItem[] = ['Ação', 'Informação'];
 export const PODE_DELEGAR_OPCOES: PodeDelegar[] = ['Sim', 'Não', 'A avaliar'];
 export const STATUS_TEMA_OPCOES: StatusTema[] = ['Ativo', 'Pausado', 'Concluído'];

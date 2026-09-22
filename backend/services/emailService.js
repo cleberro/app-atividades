@@ -103,13 +103,6 @@ function montarHtmlItensTema(contato, itens, nomeTema) {
           <p style="margin:4px 0;font-size:13px;color:${CORES.textMuted};">📅 Prazo: ${
             item.prazo ? formatarDataBr(item.prazo) : '—'
           }</p>
-          ${
-            item.dataReprogramacao
-              ? `<p style="margin:4px 0;font-size:13px;color:${CORES.textMuted};">🔁 Reprogramado para: ${formatarDataBr(
-                  item.dataReprogramacao
-                )}</p>`
-              : ''
-          }
         </div>
       `;
     })

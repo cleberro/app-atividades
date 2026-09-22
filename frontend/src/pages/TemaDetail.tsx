@@ -13,7 +13,7 @@ import ItemDetailModal from '../components/ItemDetailModal';
 import { STATUS_ITEM_OPCOES } from '../api/types';
 import type { Item } from '../api/types';
 import { ordenarItens, type CriterioOrdenacao } from '../utils/ordenacao';
-import { prazoEfetivo, formatarDataBr } from '../utils/prazo';
+import { formatarDataBr } from '../utils/prazo';
 import { useEstadoPersistente } from '../hooks/useEstadoPersistente';
 
 export default function TemaDetail() {
@@ -103,10 +103,9 @@ export default function TemaDetail() {
     const itens = itensQuery.data ?? [];
     const filtrados = itens
       .filter((item) => passaFiltroMulti(item.status, filtros.status))
-      .filter((item) => passaFiltroMulti(item.tipo, filtros.tipo))
       .filter((item) => passaFiltroMulti(item.prioridade, filtros.prioridade))
       .filter((item) => passaFiltroMulti(item.responsavel, filtros.responsavel))
-      .filter((item) => passaFiltroPrazo(prazoEfetivo(item), filtros.prazo))
+      .filter((item) => passaFiltroPrazo(item.prazo, filtros.prazo))
       .filter((item) =>
         filtros.busca ? item.titulo.toLowerCase().includes(filtros.busca.toLowerCase()) : true
       );
@@ -298,11 +297,7 @@ export default function TemaDetail() {
                   <p className="truncate text-sm font-medium">{item.titulo}</p>
                   <p className="truncate text-xs text-text-muted">
                     {item.responsavel || 'Sem responsável'}
-                    {prazoEfetivo(item)
-                      ? ` · prazo ${formatarDataBr(prazoEfetivo(item))}${
-                          item.dataReprogramacao ? ' (reprogramado)' : ''
-                        }`
-                      : ''}
+                    {item.prazo ? ` · prazo ${formatarDataBr(item.prazo)}` : ''}
                   </p>
                 </div>
                 <div className="flex shrink-0 flex-wrap items-center gap-2">

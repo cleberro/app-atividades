@@ -1,12 +1,11 @@
 import type { Tema } from '../api/types';
-import { PRIORIDADE_OPCOES, STATUS_ITEM_OPCOES, TIPO_OPCOES } from '../api/types';
+import { PRIORIDADE_OPCOES, STATUS_ITEM_OPCOES } from '../api/types';
 import MultiSelectFiltro, { FILTRO_MULTI_VAZIO, type FiltroMultiValor } from './MultiSelectFiltro';
 import FiltroPrazo, { FILTRO_PRAZO_VAZIO, type FiltroPrazoValor } from './FiltroPrazo';
 
 export interface FiltrosItensValor {
   tema: FiltroMultiValor;
   status: FiltroMultiValor;
-  tipo: FiltroMultiValor;
   prioridade: FiltroMultiValor;
   responsavel: FiltroMultiValor;
   prazo: FiltroPrazoValor;
@@ -16,7 +15,6 @@ export interface FiltrosItensValor {
 export const FILTROS_VAZIOS: FiltrosItensValor = {
   tema: { ...FILTRO_MULTI_VAZIO },
   status: { ...FILTRO_MULTI_VAZIO },
-  tipo: { ...FILTRO_MULTI_VAZIO },
   prioridade: { ...FILTRO_MULTI_VAZIO },
   responsavel: { ...FILTRO_MULTI_VAZIO },
   prazo: { ...FILTRO_PRAZO_VAZIO },
@@ -30,7 +28,6 @@ interface FiltrosItensProps {
   responsaveis?: string[];
   mostrarTema?: boolean;
   mostrarStatus?: boolean;
-  mostrarTipo?: boolean;
   mostrarPrioridade?: boolean;
   mostrarResponsavel?: boolean;
   mostrarPrazo?: boolean;
@@ -43,7 +40,7 @@ interface FiltrosItensProps {
  * Cada visão (Tabela, Kanban, Detalhe do Tema) decide quais filtros exibir
  * via as props `mostrarX`, já que nem todo filtro faz sentido em toda visão
  * (ex.: o Kanban já agrupa por status, então esconde o filtro de status).
- * Os filtros de select (Tema/Status/Tipo/Prioridade/Responsável) aceitam
+ * Os filtros de select (Tema/Status/Prioridade/Responsável) aceitam
  * múltiplos valores e um modo "Mostrar" (inclui só os marcados) ou
  * "Ocultar" (exclui os marcados). Prazo filtra por intervalo de datas.
  */
@@ -54,7 +51,6 @@ export default function FiltrosItens({
   responsaveis = [],
   mostrarTema = true,
   mostrarStatus = true,
-  mostrarTipo = true,
   mostrarPrioridade = true,
   mostrarResponsavel = true,
   mostrarPrazo = true,
@@ -65,7 +61,6 @@ export default function FiltrosItens({
     !!valor.busca ||
     valor.tema.valores.length > 0 ||
     valor.status.valores.length > 0 ||
-    valor.tipo.valores.length > 0 ||
     valor.prioridade.valores.length > 0 ||
     valor.responsavel.valores.length > 0 ||
     !!(valor.prazo.de || valor.prazo.ate);
@@ -98,14 +93,6 @@ export default function FiltrosItens({
           opcoes={STATUS_ITEM_OPCOES.map((op) => ({ value: op, label: op }))}
           valor={valor.status}
           onChange={(v) => set('status', v)}
-        />
-      )}
-      {mostrarTipo && (
-        <MultiSelectFiltro
-          label="Tipo"
-          opcoes={TIPO_OPCOES.map((op) => ({ value: op, label: op }))}
-          valor={valor.tipo}
-          onChange={(v) => set('tipo', v)}
         />
       )}
       {mostrarPrioridade && (

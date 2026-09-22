@@ -75,10 +75,7 @@ function montarMensagemItens(contato, itens, dataReferencia, cabecalho) {
   for (const item of itens) {
     const statusEmoji = STATUS_EMOJI[item.status] || '⚪';
     const prioridadeEmoji = item.prioridade ? PRIORIDADE_EMOJI[item.prioridade] || '⚪' : null;
-    // O atraso é medido pelo prazo efetivo (reprogramação, quando houver),
-    // a mesma regra usada pelo app e pelo getItensVencidos().
-    const prazoEfetivo = item.dataReprogramacao || item.prazo || null;
-    const atraso = prazoEfetivo ? diasDeAtraso(prazoEfetivo, dataReferencia) : null;
+    const atraso = item.prazo ? diasDeAtraso(item.prazo, dataReferencia) : null;
     const estaVencido = atraso !== null && atraso > 0;
     const sufixoAtraso = estaVencido ? ` _(venceu há ${atraso} dia(s))_` : '';
 
@@ -87,10 +84,7 @@ function montarMensagemItens(contato, itens, dataReferencia, cabecalho) {
     linhas.push(`${statusEmoji} *${limparMarkdown(item.titulo)}*`);
     if (item.temaNome) linhas.push(`📁 Tema: ${limparMarkdown(item.temaNome)}`);
     linhas.push(`👤 Responsável: ${item.responsavel ? limparMarkdown(item.responsavel) : '—'}`);
-    linhas.push(`📅 Prazo: ${formatarDataBr(item.prazo)}${item.dataReprogramacao ? '' : sufixoAtraso}`);
-    if (item.dataReprogramacao) {
-      linhas.push(`🔁 Reprogramado para: ${formatarDataBr(item.dataReprogramacao)}${sufixoAtraso}`);
-    }
+    linhas.push(`📅 Prazo: ${formatarDataBr(item.prazo)}${sufixoAtraso}`);
     if (prioridadeEmoji) linhas.push(`${prioridadeEmoji} Prioridade: ${item.prioridade}`);
     linhas.push(`📊 Status: ${statusEmoji} ${item.status}`);
   }
