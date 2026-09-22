@@ -214,6 +214,8 @@ function mapItem(page) {
     oQuePrecisaSerFeito: getRichText(p['O Que Precisa Ser Feito']),
     podeDelegar: getSelect(p['Pode Delegar']),
     delegarPara: getRichText(p['Delegar Para']),
+    classeKozo: getSelect(p['Classe KOZO']),
+    tempoEstimado: getSelect(p['Tempo estimado']),
   };
 }
 
@@ -430,7 +432,7 @@ async function deleteTema(temaId) {
 
 /**
  * Lista itens aplicando filtros opcionais combinados com AND.
- * filtros: { tema, status, prioridade, q }
+ * filtros: { tema, status, prioridade, classeKozo, tempoEstimado, q }
  */
 async function listItens(filtros = {}) {
   const andFilters = [];
@@ -443,6 +445,12 @@ async function listItens(filtros = {}) {
   }
   if (filtros.prioridade) {
     andFilters.push({ property: 'Prioridade', select: { equals: filtros.prioridade } });
+  }
+  if (filtros.classeKozo) {
+    andFilters.push({ property: 'Classe KOZO', select: { equals: filtros.classeKozo } });
+  }
+  if (filtros.tempoEstimado) {
+    andFilters.push({ property: 'Tempo estimado', select: { equals: filtros.tempoEstimado } });
   }
   if (filtros.q) {
     andFilters.push({ property: 'Título', title: { contains: filtros.q } });
@@ -509,6 +517,12 @@ async function createItem(dados) {
   }
   if (dados.delegarPara) {
     properties['Delegar Para'] = { rich_text: buildRichText(dados.delegarPara) };
+  }
+  if (dados.classeKozo) {
+    properties['Classe KOZO'] = { select: { name: dados.classeKozo } };
+  }
+  if (dados.tempoEstimado) {
+    properties['Tempo estimado'] = { select: { name: dados.tempoEstimado } };
   }
 
   const page = await notion.pages.create({
@@ -584,6 +598,12 @@ async function updateItem(itemId, dados) {
   }
   if (dados.delegarPara !== undefined) {
     properties['Delegar Para'] = { rich_text: buildRichText(dados.delegarPara) };
+  }
+  if (dados.classeKozo !== undefined) {
+    properties['Classe KOZO'] = { select: dados.classeKozo ? { name: dados.classeKozo } : null };
+  }
+  if (dados.tempoEstimado !== undefined) {
+    properties['Tempo estimado'] = { select: dados.tempoEstimado ? { name: dados.tempoEstimado } : null };
   }
 
   const page = await notion.pages.update({ page_id: itemId, properties });

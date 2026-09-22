@@ -3,8 +3,10 @@
  * -----------------------------------------------------------------------
  * Migracao de schema da database "Itens - Acoes e Informacoes" do Notion.
  *
- * Cria as propriedades de detalhamento do item (objetivo, situacao atual,
- * situacao desejada, plano de acao, delegacao) e as de atraso/reprogramacao.
+ * Cria as propriedades de detalhamento do item (plano de acao, delegacao)
+ * e as da classificacao KOZO (Classe KOZO e Tempo estimado). Os campos de
+ * objetivo/situacao/atraso/reprogramacao foram removidos da database e
+ * propositalmente nao constam mais aqui, para nao serem recriados.
  * NAO cria a database nem altera dados existentes - apenas acrescenta as
  * propriedades que ainda nao existirem.
  *
@@ -25,9 +27,6 @@ const ITENS_DB_ID = '8628bb86-8a72-4607-80a6-1da5d1938843';
 // Propriedades a garantir na database, no formato aceito por databases.update.
 // A chave e exatamente o nome da propriedade lido/escrito pelo notionService.
 const PROPRIEDADES = {
-  'Objetivo / Problema': { rich_text: {} },
-  'Situação Atual': { rich_text: {} },
-  'Situação Desejada': { rich_text: {} },
   'O Que Precisa Ser Feito': { rich_text: {} },
   'Pode Delegar': {
     select: {
@@ -39,8 +38,32 @@ const PROPRIEDADES = {
     },
   },
   'Delegar Para': { rich_text: {} },
-  'Motivo do Atraso': { rich_text: {} },
-  'Data de Reprogramação': { date: {} },
+  // Classificação KOZO: Projeto (Núcleo), Tarefa (Fluxo), Comunicação
+  // (Interface) e Híbrido, que é o item que ainda precisa ser decomposto.
+  'Classe KOZO': {
+    select: {
+      options: [
+        { name: 'Projeto', color: 'blue' },
+        { name: 'Tarefa', color: 'gray' },
+        { name: 'Comunicação', color: 'green' },
+        { name: 'Híbrido (decompor)', color: 'orange' },
+      ],
+    },
+  },
+  // Select (e não number) de propósito: são faixas fixas de esforço no
+  // formato HH:MM, do jeito que já foram criadas no Notion.
+  'Tempo estimado': {
+    select: {
+      options: [
+        { name: '00:15', color: 'green' },
+        { name: '00:30', color: 'green' },
+        { name: '01:00', color: 'blue' },
+        { name: '02:00', color: 'blue' },
+        { name: '03:00', color: 'purple' },
+        { name: '04:00', color: 'purple' },
+      ],
+    },
+  },
 };
 
 async function main() {

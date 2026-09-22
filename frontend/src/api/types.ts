@@ -2,6 +2,15 @@ export type StatusItem = 'Pendente' | 'Em Andamento' | 'Concluída' | 'Bloqueada
 export type Prioridade = 'Alta' | 'Média' | 'Baixa';
 export type StatusTema = 'Ativo' | 'Pausado' | 'Concluído';
 export type PodeDelegar = 'Sim' | 'Não' | 'A avaliar';
+/**
+ * Classificação KOZO do item — é ela que alimenta as visões Núcleo
+ * (Projetos), Fluxo (Tarefas) e Interface (Comunicação). "Híbrido" é o item
+ * que ainda mistura mais de uma natureza e precisa ser decomposto: por isso
+ * ele não tem visão própria, e sim um aviso na tela de Visões.
+ */
+export type ClasseKozo = 'Projeto' | 'Tarefa' | 'Comunicação' | 'Híbrido (decompor)';
+/** Faixas fixas de esforço (HH:MM) — é um Select no Notion, não um número. */
+export type TempoEstimado = '00:15' | '00:30' | '01:00' | '02:00' | '03:00' | '04:00';
 
 export interface Tema {
   id: string;
@@ -36,6 +45,8 @@ export interface Item {
   oQuePrecisaSerFeito: string;
   podeDelegar: PodeDelegar | null;
   delegarPara: string;
+  classeKozo: ClasseKozo | null;
+  tempoEstimado: TempoEstimado | null;
 }
 
 export interface NovoItemPayload {
@@ -52,6 +63,8 @@ export interface NovoItemPayload {
   oQuePrecisaSerFeito?: string;
   podeDelegar?: PodeDelegar | '';
   delegarPara?: string;
+  classeKozo?: ClasseKozo | '';
+  tempoEstimado?: TempoEstimado | '';
 }
 
 export type AtualizarItemPayload = Partial<NovoItemPayload> & {
@@ -245,4 +258,28 @@ export const STATUS_ITEM_OPCOES: StatusItem[] = [
 
 export const PRIORIDADE_OPCOES: Prioridade[] = ['Alta', 'Média', 'Baixa'];
 export const PODE_DELEGAR_OPCOES: PodeDelegar[] = ['Sim', 'Não', 'A avaliar'];
+export const CLASSE_KOZO_OPCOES: ClasseKozo[] = [
+  'Projeto',
+  'Tarefa',
+  'Comunicação',
+  'Híbrido (decompor)',
+];
+/**
+ * O que cada classe KOZO significa na prática — usado como legenda nos
+ * selects de Classe KOZO e como subtítulo das abas da tela de Visões.
+ */
+export const LEGENDA_CLASSE_KOZO: Record<ClasseKozo, string> = {
+  Projeto: 'Núcleo',
+  Tarefa: 'Fluxo',
+  'Comunicação': 'Interface',
+  'Híbrido (decompor)': 'precisa ser quebrado em itens menores',
+};
+export const TEMPO_ESTIMADO_OPCOES: TempoEstimado[] = [
+  '00:15',
+  '00:30',
+  '01:00',
+  '02:00',
+  '03:00',
+  '04:00',
+];
 export const STATUS_TEMA_OPCOES: StatusTema[] = ['Ativo', 'Pausado', 'Concluído'];

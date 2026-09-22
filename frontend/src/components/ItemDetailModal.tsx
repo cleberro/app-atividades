@@ -2,9 +2,16 @@ import { useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { api } from '../api/client';
-import { PrioridadePill, StatusPill } from './Pills';
-import type { Item, PodeDelegar, Prioridade, StatusItem } from '../api/types';
-import { PODE_DELEGAR_OPCOES, PRIORIDADE_OPCOES, STATUS_ITEM_OPCOES } from '../api/types';
+import { ClasseKozoPill, PrioridadePill, StatusPill } from './Pills';
+import type { ClasseKozo, Item, PodeDelegar, Prioridade, StatusItem, TempoEstimado } from '../api/types';
+import {
+  CLASSE_KOZO_OPCOES,
+  LEGENDA_CLASSE_KOZO,
+  PODE_DELEGAR_OPCOES,
+  PRIORIDADE_OPCOES,
+  STATUS_ITEM_OPCOES,
+  TEMPO_ESTIMADO_OPCOES,
+} from '../api/types';
 import ChecklistSubtarefas from './ChecklistSubtarefas';
 import { estaAtrasado } from '../utils/prazo';
 
@@ -38,6 +45,8 @@ export default function ItemDetailModal({ item, onClose }: ItemDetailModalProps)
   const [status, setStatus] = useState<StatusItem | ''>(item.status || '');
   const [prioridade, setPrioridade] = useState<Prioridade | ''>(item.prioridade || '');
   const [prazo, setPrazo] = useState(item.prazo || '');
+  const [classeKozo, setClasseKozo] = useState<ClasseKozo | ''>(item.classeKozo || '');
+  const [tempoEstimado, setTempoEstimado] = useState<TempoEstimado | ''>(item.tempoEstimado || '');
   const [priorizadoHoje, setPriorizadoHoje] = useState(item.priorizadoHoje);
   const [anotacoes, setAnotacoes] = useState(item.anotacoesDiarias || '');
   const [notaNova, setNotaNova] = useState('');
@@ -56,6 +65,8 @@ export default function ItemDetailModal({ item, onClose }: ItemDetailModalProps)
     setStatus(item.status || '');
     setPrioridade(item.prioridade || '');
     setPrazo(item.prazo || '');
+    setClasseKozo(item.classeKozo || '');
+    setTempoEstimado(item.tempoEstimado || '');
     setPriorizadoHoje(item.priorizadoHoje);
     setAnotacoes(item.anotacoesDiarias || '');
     setNotaNova('');
@@ -103,6 +114,8 @@ export default function ItemDetailModal({ item, onClose }: ItemDetailModalProps)
         status: (status || undefined) as StatusItem | undefined,
         prioridade: (prioridade || undefined) as Prioridade | undefined,
         prazo: prazo || undefined,
+        classeKozo,
+        tempoEstimado,
         whatsappContatoIds,
         emailContatoIds,
         oQuePrecisaSerFeito,
@@ -181,6 +194,8 @@ export default function ItemDetailModal({ item, onClose }: ItemDetailModalProps)
               {temaAtual && <span className="pill bg-bg-elevated">{temaAtual.nome}</span>}
               <StatusPill status={status || null} />
               <PrioridadePill prioridade={prioridade || null} />
+              <ClasseKozoPill classeKozo={classeKozo || null} />
+              {tempoEstimado && <span className="pill bg-bg-elevated">⏱ {tempoEstimado}</span>}
               {atrasado && (
                 <span className="pill bg-status-bloqueada/15 text-status-bloqueada">⚠ Atrasado</span>
               )}
@@ -262,6 +277,44 @@ export default function ItemDetailModal({ item, onClose }: ItemDetailModalProps)
               value={prazo}
               onChange={(e) => setPrazo(e.target.value)}
             />
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-medium text-text-muted">Classe KOZO</label>
+            <select
+              className="input-base w-full"
+              value={classeKozo}
+              onChange={(e) => setClasseKozo(e.target.value as ClasseKozo | '')}
+            >
+              <option value="">Não classificado</option>
+              {CLASSE_KOZO_OPCOES.map((op) => (
+                <option key={op} value={op}>
+                  {op}
+                  {LEGENDA_CLASSE_KOZO[op] ? ` — ${LEGENDA_CLASSE_KOZO[op]}` : ''}
+                </option>
+              ))}
+            </select>
+            <p className="mt-1 text-xs text-text-muted">
+              Define em qual{' '}
+              <Link to="/visoes" className="text-accent-secondary hover:underline">
+                visão
+              </Link>{' '}
+              o item aparece.
+            </p>
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-medium text-text-muted">Tempo estimado</label>
+            <select
+              className="input-base w-full"
+              value={tempoEstimado}
+              onChange={(e) => setTempoEstimado(e.target.value as TempoEstimado | '')}
+            >
+              <option value="">Não estimado</option>
+              {TEMPO_ESTIMADO_OPCOES.map((op) => (
+                <option key={op} value={op}>
+                  {op}
+                </option>
+              ))}
+            </select>
           </div>
         </div>
 

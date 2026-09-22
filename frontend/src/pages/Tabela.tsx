@@ -11,7 +11,7 @@ import {
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../api/client';
 import { Carregando, Erro } from '../components/Estado';
-import { PrioridadePill, StatusPill } from '../components/Pills';
+import { ClasseKozoPill, PrioridadePill, StatusPill } from '../components/Pills';
 import FiltrosItens, { FILTROS_VAZIOS, type FiltrosItensValor } from '../components/FiltrosItens';
 import { passaFiltroMulti, passaFiltroMultiArray } from '../components/MultiSelectFiltro';
 import { passaFiltroPrazo } from '../components/FiltroPrazo';
@@ -19,7 +19,8 @@ import { RANK_PRIORIDADE } from '../utils/ordenacao';
 import { formatarDataBr, estaAtrasado } from '../utils/prazo';
 import ItemDetailModal from '../components/ItemDetailModal';
 import type { Item } from '../api/types';
-import { PRIORIDADE_OPCOES, STATUS_ITEM_OPCOES } from '../api/types';
+import { CLASSE_KOZO_OPCOES, PRIORIDADE_OPCOES, STATUS_ITEM_OPCOES } from '../api/types';
+import { formatarMinutos, minutosDeTempoEstimado } from '../utils/tempo';
 
 interface LinhaItem extends Item {
   temaNome: string;
@@ -68,11 +69,18 @@ export default function Tabela() {
       .filter((item) => passaFiltroMulti(item.status, filtros.status))
       .filter((item) => passaFiltroMulti(item.prioridade, filtros.prioridade))
       .filter((item) => passaFiltroMulti(item.responsavel, filtros.responsavel))
+      .filter((item) => passaFiltroMulti(item.classeKozo, filtros.classeKozo))
+      .filter((item) => passaFiltroMulti(item.tempoEstimado, filtros.tempoEstimado))
       .filter((item) => passaFiltroPrazo(item.prazo, filtros.prazo))
       .filter((item) =>
         filtros.busca ? item.titulo.toLowerCase().includes(filtros.busca.toLowerCase()) : true
       );
   }, [itensQuery.data, mapaTemas, filtros]);
+
+  const totalEstimadoMinutos = useMemo(
+    () => dados.reduce((soma, item) => soma + minutosDeTempoEstimado(item.tempoEstimado), 0),
+    [dados]
+  );
 
   const columns = useMemo(
     () => [
@@ -140,6 +148,38 @@ export default function Tabela() {
             </select>
           );
         },
+      }),
+      columnHelper.accessor('classeKozo', {
+        header: 'Classe KOZO',
+        cell: (info) => {
+          const item = info.row.original;
+          return (
+            <select
+              className="input-base py-1 text-xs"
+              value={item.classeKozo ?? ''}
+              onClick={(e) => e.stopPropagation()}
+              onChange={(e) =>
+                atualizarItem.mutate({ id: item.id, dados: { classeKozo: e.target.value as any } })
+              }
+            >
+              <option value="">—</option>
+              {CLASSE_KOZO_OPCOES.map((op) => (
+                <option key={op} value={op}>
+                  {op}
+                </option>
+              ))}
+            </select>
+          );
+        },
+      }),
+      columnHelper.accessor('tempoEstimado', {
+        header: 'Tempo est.',
+        // Ordena pela duração (minutos) e não pelo texto, para "01:00" não
+        // ficar antes de "00:30" quando as faixas crescerem.
+        sortingFn: (rowA, rowB) =>
+          minutosDeTempoEstimado(rowA.original.tempoEstimado) -
+          minutosDeTempoEstimado(rowB.original.tempoEstimado),
+        cell: (info) => <span className="text-xs">{info.getValue() || '—'}</span>,
       }),
       columnHelper.accessor('responsavel', {
         header: 'Responsável',
@@ -245,6 +285,7 @@ export default function Tabela() {
         <h1 className="text-2xl font-semibold">Tabela de itens</h1>
         <p className="mt-1 text-sm text-text-muted">
           {dados.length} item(ns) — agrupados por tema. Clique no título para ver todos os detalhes.
+          {totalEstimadoMinutos > 0 && ` Esforço estimado: ${formatarMinutos(totalEstimadoMinutos)}.`}
         </p>
       </header>
 
@@ -310,7 +351,11 @@ export default function Tabela() {
                     if (cell.column.id === 'temaNome' && grouping.includes('temaNome')) {
                       return <td key={cell.id} className="px-3 py-2 text-text-muted" />;
                     }
-                    if (cell.column.id === 'status' || cell.column.id === 'prioridade') {
+                    if (
+                      cell.column.id === 'status' ||
+                      cell.column.id === 'prioridade' ||
+                      cell.column.id === 'classeKozo'
+                    ) {
                       return (
                         <td key={cell.id} className="px-3 py-2">
                           <div className="flex items-center gap-2">
@@ -318,6 +363,9 @@ export default function Tabela() {
                             {cell.column.id === 'status' && <StatusPill status={row.original.status} />}
                             {cell.column.id === 'prioridade' && (
                               <PrioridadePill prioridade={row.original.prioridade} />
+                            )}
+                            {cell.column.id === 'classeKozo' && row.original.classeKozo && (
+                              <ClasseKozoPill classeKozo={row.original.classeKozo} />
                             )}
                           </div>
                         </td>

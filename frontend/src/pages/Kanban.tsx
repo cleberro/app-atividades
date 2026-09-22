@@ -13,7 +13,7 @@ import { useDraggable } from '@dnd-kit/core';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../api/client';
 import { Carregando, Erro } from '../components/Estado';
-import { PrioridadePill } from '../components/Pills';
+import { ClasseKozoPill, PrioridadePill } from '../components/Pills';
 import FiltrosItens, { FILTROS_VAZIOS, type FiltrosItensValor } from '../components/FiltrosItens';
 import { passaFiltroMulti, passaFiltroMultiArray } from '../components/MultiSelectFiltro';
 import { passaFiltroPrazo } from '../components/FiltroPrazo';
@@ -50,6 +50,14 @@ function CartaoItem({ item, onAbrir }: { item: Item; onAbrir: (item: Item) => vo
       className={`card card-hover cursor-grab p-3 active:cursor-grabbing ${isDragging ? 'opacity-40' : ''}`}
     >
       <p className="text-sm font-medium">{item.titulo}</p>
+      {(item.classeKozo || item.tempoEstimado) && (
+        <div className="mt-2 flex flex-wrap items-center gap-1">
+          {item.classeKozo && <ClasseKozoPill classeKozo={item.classeKozo} />}
+          {item.tempoEstimado && (
+            <span className="pill bg-bg-elevated text-text-muted">⏱ {item.tempoEstimado}</span>
+          )}
+        </div>
+      )}
       <div className="mt-2 flex items-center justify-between">
         <span className="text-xs text-text-muted">{item.responsavel || 'Sem responsável'}</span>
         <PrioridadePill prioridade={item.prioridade} />
@@ -150,6 +158,8 @@ export default function Kanban() {
     if (!passaFiltroMultiArray(item.temaIds, filtros.tema)) return false;
     if (!passaFiltroMulti(item.prioridade, filtros.prioridade)) return false;
     if (!passaFiltroMulti(item.responsavel, filtros.responsavel)) return false;
+    if (!passaFiltroMulti(item.classeKozo, filtros.classeKozo)) return false;
+    if (!passaFiltroMulti(item.tempoEstimado, filtros.tempoEstimado)) return false;
     if (!passaFiltroPrazo(item.prazo, filtros.prazo)) return false;
     if (filtros.busca && !item.titulo.toLowerCase().includes(filtros.busca.toLowerCase())) return false;
     return true;

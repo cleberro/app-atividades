@@ -1,4 +1,4 @@
-import type { Prioridade, StatusItem } from '../api/types';
+import type { ClasseKozo, Prioridade, StatusItem, TempoEstimado } from '../api/types';
 
 const STATUS_COLORS: Record<string, string> = {
   Pendente: 'var(--status-pendente)',
@@ -6,6 +6,15 @@ const STATUS_COLORS: Record<string, string> = {
   Bloqueada: 'var(--status-bloqueada)',
   'Concluída': 'var(--status-concluida)',
   'Não se aplica': '#5A5C78',
+};
+
+// Mesmas cores que as opções têm no Notion (azul/cinza/verde/laranja), para
+// quem olha a database e o app reconhecer a classe pela cor nos dois lugares.
+const CLASSE_KOZO_COLORS: Record<string, string> = {
+  Projeto: 'var(--status-andamento)',
+  Tarefa: 'var(--text-muted)',
+  'Comunicação': 'var(--status-concluida)',
+  'Híbrido (decompor)': '#E17055',
 };
 
 const PRIORIDADE_COLORS: Record<string, string> = {
@@ -40,6 +49,33 @@ export function PrioridadePill({ prioridade }: { prioridade: Prioridade | string
       style={{ backgroundColor: `${color}26`, color, border: `1px solid ${color}55` }}
     >
       {prioridade || 'Sem prioridade'}
+    </span>
+  );
+}
+
+/** Pill da Classe KOZO (Projeto / Tarefa / Comunicação / Híbrido). */
+export function ClasseKozoPill({ classeKozo }: { classeKozo: ClasseKozo | string | null }) {
+  const color = (classeKozo && CLASSE_KOZO_COLORS[classeKozo]) || 'var(--text-muted)';
+  return (
+    <span
+      className="pill"
+      style={{ backgroundColor: `${color}26`, color, border: `1px solid ${color}55` }}
+    >
+      {classeKozo || 'Sem classe'}
+    </span>
+  );
+}
+
+/** Pill do tempo estimado (HH:MM), sempre com o relógio para não virar "um horário". */
+export function TempoEstimadoPill({ tempoEstimado }: { tempoEstimado: TempoEstimado | string | null }) {
+  if (!tempoEstimado) return <span className="text-text-muted">—</span>;
+  const color = 'var(--accent-secondary)';
+  return (
+    <span
+      className="pill"
+      style={{ backgroundColor: `${color}26`, color, border: `1px solid ${color}55` }}
+    >
+      ⏱ {tempoEstimado}
     </span>
   );
 }
