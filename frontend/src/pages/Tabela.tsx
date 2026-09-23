@@ -7,6 +7,8 @@ import {
   getGroupedRowModel,
   getSortedRowModel,
   useReactTable,
+  type ExpandedState,
+  type GroupingState,
 } from '@tanstack/react-table';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../api/client';
@@ -28,11 +30,50 @@ interface LinhaItem extends Item {
 
 const columnHelper = createColumnHelper<LinhaItem>();
 
+/** Colunas da grid pelas quais o usuário pode agrupar (id da coluna → rótulo). */
+const OPCOES_AGRUPAMENTO: { id: string; label: string }[] = [
+  { id: 'temaNome', label: 'Tema' },
+  { id: 'titulo', label: 'Título' },
+  { id: 'status', label: 'Status' },
+  { id: 'prioridade', label: 'Prioridade' },
+  { id: 'classeKozo', label: 'Classe KOZO' },
+  { id: 'prazo', label: 'Prazo' },
+  { id: 'priorizadoHoje', label: 'Hoje' },
+];
+
+/**
+ * Texto do cabeçalho de um grupo. Lê o valor do primeiro item do grupo (e
+ * não o `groupingValue` do TanStack, que vem convertido para string — null
+ * vira "null", boolean vira "true"/"false").
+ */
+function rotuloDoGrupo(colunaId: string, item: LinhaItem): string {
+  switch (colunaId) {
+    case 'temaNome':
+      return item.temaNome;
+    case 'titulo':
+      return item.titulo || 'Sem título';
+    case 'status':
+      return item.status ?? 'Sem status';
+    case 'prioridade':
+      return item.prioridade ?? 'Sem prioridade';
+    case 'classeKozo':
+      return item.classeKozo ?? 'Sem classe KOZO';
+    case 'prazo':
+      return item.prazo ? formatarDataBr(item.prazo) : 'Sem prazo';
+    case 'priorizadoHoje':
+      return item.priorizadoHoje ? 'Priorizado hoje' : 'Não priorizado hoje';
+    default:
+      return '';
+  }
+}
+
 export default function Tabela() {
   const queryClient = useQueryClient();
 
   const [filtros, setFiltros] = useState<FiltrosItensValor>(FILTROS_VAZIOS);
-  const [grouping, setGrouping] = useState<string[]>(['temaNome']);
+  // A grid abre sempre desagrupada; o agrupamento é escolhido no seletor.
+  const [grouping, setGrouping] = useState<GroupingState>([]);
+  const [expanded, setExpanded] = useState<ExpandedState>(true);
   const [itemSelecionado, setItemSelecionado] = useState<Item | null>(null);
 
   const temasQuery = useQuery({ queryKey: ['temas'], queryFn: api.listarTemas });
@@ -86,7 +127,6 @@ export default function Tabela() {
     () => [
       columnHelper.accessor('temaNome', {
         header: 'Tema',
-        aggregatedCell: ({ getValue }) => getValue(),
       }),
       columnHelper.accessor('titulo', {
         header: 'Título',
@@ -172,35 +212,6 @@ export default function Tabela() {
           );
         },
       }),
-      columnHelper.accessor('tempoEstimado', {
-        header: 'Tempo est.',
-        // Ordena pela duração (minutos) e não pelo texto, para "01:00" não
-        // ficar antes de "00:30" quando as faixas crescerem.
-        sortingFn: (rowA, rowB) =>
-          minutosDeTempoEstimado(rowA.original.tempoEstimado) -
-          minutosDeTempoEstimado(rowB.original.tempoEstimado),
-        cell: (info) => <span className="text-xs">{info.getValue() || '—'}</span>,
-      }),
-      columnHelper.accessor('responsavel', {
-        header: 'Responsável',
-        cell: (info) => info.getValue() || '—',
-      }),
-      columnHelper.accessor('podeDelegar', {
-        header: 'Delegar',
-        cell: (info) => {
-          const item = info.row.original;
-          const valor = info.getValue();
-          if (!valor) return <span className="text-text-muted">—</span>;
-          return (
-            <span className="text-xs">
-              {valor}
-              {valor === 'Sim' && item.delegarPara ? (
-                <span className="text-text-muted"> · {item.delegarPara}</span>
-              ) : null}
-            </span>
-          );
-        },
-      }),
       columnHelper.accessor('prazo', {
         header: 'Prazo',
         sortingFn: (rowA, rowB) => {
@@ -219,25 +230,6 @@ export default function Tabela() {
             <span className={`text-xs ${atrasado ? 'font-semibold text-status-bloqueada' : ''}`}>
               {formatarDataBr(item.prazo)}
             </span>
-          );
-        },
-      }),
-      columnHelper.accessor('anotacoesDiarias', {
-        header: 'Notas',
-        cell: (info) => {
-          const texto = info.getValue();
-          const primeiraLinha = texto ? texto.split('\n')[0] : '';
-          const preview = primeiraLinha.length > 40 ? `${primeiraLinha.slice(0, 40)}…` : primeiraLinha;
-          return (
-            <button
-              className="max-w-[180px] truncate text-left text-xs text-text-muted hover:text-accent-secondary hover:underline"
-              onClick={(e) => {
-                e.stopPropagation();
-                setItemSelecionado(info.row.original);
-              }}
-            >
-              {preview || '+ anotar'}
-            </button>
           );
         },
       }),
@@ -267,8 +259,11 @@ export default function Tabela() {
   const table = useReactTable({
     data: dados,
     columns,
-    state: { grouping },
+    state: { grouping, expanded },
     onGroupingChange: setGrouping,
+    onExpandedChange: setExpanded,
+    // Mantém a ordem das colunas ao agrupar (o padrão move a coluna agrupada para o início).
+    groupedColumnMode: false,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getGroupedRowModel: getGroupedRowModel(),
@@ -284,7 +279,7 @@ export default function Tabela() {
       <header>
         <h1 className="text-2xl font-semibold">Tabela de itens</h1>
         <p className="mt-1 text-sm text-text-muted">
-          {dados.length} item(ns) — agrupados por tema. Clique no título para ver todos os detalhes.
+          {dados.length} item(ns). Clique no título para ver todos os detalhes.
           {totalEstimadoMinutos > 0 && ` Esforço estimado: ${formatarMinutos(totalEstimadoMinutos)}.`}
         </p>
       </header>
@@ -298,23 +293,39 @@ export default function Tabela() {
             responsaveis={responsaveisDisponiveis}
           />
         </div>
-        <button
-          onClick={() => setGrouping(grouping.length ? [] : ['temaNome'])}
-          className="rounded-lg bg-bg-elevated px-3 py-2 text-sm font-medium text-text-primary hover:bg-accent-primary"
-        >
-          {grouping.length ? 'Desagrupar' : 'Agrupar por tema'}
-        </button>
+        <label className="flex items-center gap-2 text-sm text-text-muted">
+          Agrupar por
+          <select
+            aria-label="Agrupar por"
+            className="input-base py-2 text-sm"
+            value={grouping[0] ?? ''}
+            onChange={(e) => {
+              setGrouping(e.target.value ? [e.target.value] : []);
+              // Ao trocar o agrupamento, os grupos começam todos abertos.
+              setExpanded(true);
+            }}
+          >
+            <option value="">Nenhum</option>
+            {OPCOES_AGRUPAMENTO.map((op) => (
+              <option key={op.id} value={op.id}>
+                {op.label}
+              </option>
+            ))}
+          </select>
+        </label>
       </div>
 
       <div className="card overflow-x-auto p-0">
-        <table className="w-full min-w-[720px] border-collapse text-sm">
+        <table className="w-full min-w-[960px] border-collapse text-sm">
           <thead>
             {table.getHeaderGroups().map((headerGroup) => (
               <tr key={headerGroup.id} className="border-b border-white/10 text-left text-xs uppercase text-text-muted">
                 {headerGroup.headers.map((header) => (
                   <th
                     key={header.id}
-                    className="cursor-pointer select-none px-3 py-2"
+                    className={`cursor-pointer select-none px-3 py-2 ${
+                      header.column.id === 'titulo' ? 'w-[40%] min-w-[24rem]' : 'whitespace-nowrap'
+                    }`}
                     onClick={header.column.getToggleSortingHandler()}
                   >
                     {flexRender(header.column.columnDef.header, header.getContext())}
@@ -327,12 +338,15 @@ export default function Tabela() {
           <tbody>
             {table.getRowModel().rows.map((row) => {
               if (row.getIsGrouped()) {
+                const primeiroItem = row.getLeafRows()[0]?.original;
                 return (
                   <tr key={row.id} className="bg-bg-elevated">
                     <td colSpan={columns.length} className="px-3 py-2 text-sm font-semibold text-accent-secondary">
-                      <button onClick={row.getToggleExpandedHandler()} className="flex items-center gap-2">
+                      <button onClick={row.getToggleExpandedHandler()} className="flex items-center gap-2 text-left">
                         <span>{row.getIsExpanded() ? '▾' : '▸'}</span>
-                        {row.getValue('temaNome') as string}
+                        {primeiroItem && row.groupingColumnId
+                          ? rotuloDoGrupo(row.groupingColumnId, primeiroItem)
+                          : ''}
                         <span className="text-xs font-normal text-text-muted">
                           ({row.subRows.length} item(ns))
                         </span>
@@ -348,9 +362,6 @@ export default function Tabela() {
                   onClick={() => setItemSelecionado(row.original)}
                 >
                   {row.getVisibleCells().map((cell) => {
-                    if (cell.column.id === 'temaNome' && grouping.includes('temaNome')) {
-                      return <td key={cell.id} className="px-3 py-2 text-text-muted" />;
-                    }
                     if (
                       cell.column.id === 'status' ||
                       cell.column.id === 'prioridade' ||
