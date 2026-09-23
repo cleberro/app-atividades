@@ -13,7 +13,7 @@ import {
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../api/client';
 import { Carregando, Erro } from '../components/Estado';
-import { ClasseKozoPill, PrioridadePill, StatusPill } from '../components/Pills';
+import { ClasseKozoPill, PrioridadePill } from '../components/Pills';
 import FiltrosItens, { FILTROS_VAZIOS, type FiltrosItensValor } from '../components/FiltrosItens';
 import { passaFiltroMulti, passaFiltroMultiArray } from '../components/MultiSelectFiltro';
 import { passaFiltroPrazo } from '../components/FiltroPrazo';
@@ -21,7 +21,7 @@ import { RANK_PRIORIDADE } from '../utils/ordenacao';
 import { formatarDataBr, estaAtrasado } from '../utils/prazo';
 import ItemDetailModal from '../components/ItemDetailModal';
 import type { Item } from '../api/types';
-import { CLASSE_KOZO_OPCOES, PRIORIDADE_OPCOES, STATUS_ITEM_OPCOES } from '../api/types';
+import { CLASSE_KOZO_OPCOES, PRIORIDADE_OPCOES } from '../api/types';
 import { formatarMinutos, minutosDeTempoEstimado } from '../utils/tempo';
 
 interface LinhaItem extends Item {
@@ -34,7 +34,6 @@ const columnHelper = createColumnHelper<LinhaItem>();
 const OPCOES_AGRUPAMENTO: { id: string; label: string }[] = [
   { id: 'temaNome', label: 'Tema' },
   { id: 'titulo', label: 'Título' },
-  { id: 'status', label: 'Status' },
   { id: 'prioridade', label: 'Prioridade' },
   { id: 'classeKozo', label: 'Classe KOZO' },
   { id: 'prazo', label: 'Prazo' },
@@ -52,8 +51,6 @@ function rotuloDoGrupo(colunaId: string, item: LinhaItem): string {
       return item.temaNome;
     case 'titulo':
       return item.titulo || 'Sem título';
-    case 'status':
-      return item.status ?? 'Sem status';
     case 'prioridade':
       return item.prioridade ?? 'Sem prioridade';
     case 'classeKozo':
@@ -141,28 +138,6 @@ export default function Tabela() {
             {info.getValue()}
           </button>
         ),
-      }),
-      columnHelper.accessor('status', {
-        header: 'Status',
-        cell: (info) => {
-          const item = info.row.original;
-          return (
-            <select
-              className="input-base py-1 text-xs"
-              value={item.status ?? ''}
-              onClick={(e) => e.stopPropagation()}
-              onChange={(e) =>
-                atualizarItem.mutate({ id: item.id, dados: { status: e.target.value as any } })
-              }
-            >
-              {STATUS_ITEM_OPCOES.map((op) => (
-                <option key={op} value={op}>
-                  {op}
-                </option>
-              ))}
-            </select>
-          );
-        },
       }),
       columnHelper.accessor('prioridade', {
         header: 'Prioridade',
@@ -362,16 +337,11 @@ export default function Tabela() {
                   onClick={() => setItemSelecionado(row.original)}
                 >
                   {row.getVisibleCells().map((cell) => {
-                    if (
-                      cell.column.id === 'status' ||
-                      cell.column.id === 'prioridade' ||
-                      cell.column.id === 'classeKozo'
-                    ) {
+                    if (cell.column.id === 'prioridade' || cell.column.id === 'classeKozo') {
                       return (
                         <td key={cell.id} className="px-3 py-2">
                           <div className="flex items-center gap-2">
                             {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                            {cell.column.id === 'status' && <StatusPill status={row.original.status} />}
                             {cell.column.id === 'prioridade' && (
                               <PrioridadePill prioridade={row.original.prioridade} />
                             )}
