@@ -21,7 +21,7 @@ import { RANK_PRIORIDADE } from '../utils/ordenacao';
 import { formatarDataBr, estaAtrasado } from '../utils/prazo';
 import ItemDetailModal from '../components/ItemDetailModal';
 import type { Item } from '../api/types';
-import { CLASSE_KOZO_OPCOES, PRIORIDADE_OPCOES } from '../api/types';
+import { CLASSE_KOZO_OPCOES, PRIORIDADE_OPCOES, TEMPO_ESTIMADO_OPCOES } from '../api/types';
 import { formatarMinutos, minutosDeTempoEstimado } from '../utils/tempo';
 
 interface LinhaItem extends Item {
@@ -36,6 +36,7 @@ const OPCOES_AGRUPAMENTO: { id: string; label: string }[] = [
   { id: 'titulo', label: 'Título' },
   { id: 'prioridade', label: 'Prioridade' },
   { id: 'classeKozo', label: 'Classe KOZO' },
+  { id: 'tempoEstimado', label: 'Tempo est.' },
   { id: 'prazo', label: 'Prazo' },
   { id: 'priorizadoHoje', label: 'Hoje' },
 ];
@@ -55,6 +56,8 @@ function rotuloDoGrupo(colunaId: string, item: LinhaItem): string {
       return item.prioridade ?? 'Sem prioridade';
     case 'classeKozo':
       return item.classeKozo ?? 'Sem classe KOZO';
+    case 'tempoEstimado':
+      return item.tempoEstimado ?? 'Sem tempo estimado';
     case 'prazo':
       return item.prazo ? formatarDataBr(item.prazo) : 'Sem prazo';
     case 'priorizadoHoje':
@@ -179,6 +182,35 @@ export default function Tabela() {
             >
               <option value="">—</option>
               {CLASSE_KOZO_OPCOES.map((op) => (
+                <option key={op} value={op}>
+                  {op}
+                </option>
+              ))}
+            </select>
+          );
+        },
+      }),
+      columnHelper.accessor('tempoEstimado', {
+        header: 'Tempo est.',
+        // Ordena pela duração (minutos) e não pelo texto, para "01:00" não
+        // ficar antes de "00:30" quando as faixas crescerem.
+        sortingFn: (rowA, rowB) =>
+          minutosDeTempoEstimado(rowA.original.tempoEstimado) -
+          minutosDeTempoEstimado(rowB.original.tempoEstimado),
+        cell: (info) => {
+          const item = info.row.original;
+          return (
+            <select
+              aria-label="Tempo estimado"
+              className="input-base py-1 text-xs"
+              value={item.tempoEstimado ?? ''}
+              onClick={(e) => e.stopPropagation()}
+              onChange={(e) =>
+                atualizarItem.mutate({ id: item.id, dados: { tempoEstimado: e.target.value as any } })
+              }
+            >
+              <option value="">—</option>
+              {TEMPO_ESTIMADO_OPCOES.map((op) => (
                 <option key={op} value={op}>
                   {op}
                 </option>
